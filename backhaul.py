@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 
-# Plotly 라이브러리 안전하게 불러오기
+# Plotly 라이브러리 안전하게 불러오기 (미국 지도 시각화용)
 try:
     import plotly.graph_objects as go
     PLOTLY_AVAILABLE = True
@@ -36,7 +36,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# [수정] 회사 공식 타이틀과 상세 설명이 포함된 헤더 렌더링 함수
+# 회사 공식 타이틀과 상세 설명이 포함된 헤더 렌더링 함수
 def render_official_header():
     st.markdown("""
     <div style="background-color: #f8fafc; padding: 40px 20px; border-radius: 15px; border: 2px solid #e2e8f0; margin-bottom: 30px; text-align: center;">
@@ -70,7 +70,7 @@ def load_data():
 
 df_clients, df_orders, df_trucks = load_data()
 
-# 데이터 기본 구조 보장 (데이터가 없는 초기 상태 대응)
+# 데이터 기본 구조 보장
 if df_clients.empty:
     df_clients = pd.DataFrame(columns=["client_id", "name", "type"])
 if df_orders.empty:
@@ -101,7 +101,7 @@ def render_network_map():
     
     fig = go.Figure()
 
-    # 경로 연결선 (GA 허브를 중심으로 각 지역 연결)
+    # 경로 연결선
     for name, coord in hubs.items():
         if name != 'GA (Main)':
             fig.add_trace(go.Scattergeo(
@@ -163,13 +163,30 @@ for menu in all_menus:
     if st.sidebar.button(menu, key=f"sidebar_{menu}", use_container_width=True):
         st.session_state.current_menu = menu
 
+# --- [사이드바 하단 공유 섹션] ---
+st.sidebar.markdown("<br><br>", unsafe_allow_html=True)
+st.sidebar.markdown("---")
+st.sidebar.subheader("🔗 시스템 공유하기")
+
+# 변수명을 backhaul_share_url로 변경하여 의미를 명확히 함
+backhaul_share_url = "https://giant-backhaul.streamlit.app" 
+
+# QR 코드 생성 (QR Server API 사용)
+qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={backhaul_share_url}"
+
+st.sidebar.image(qr_api_url, caption="QR 코드를 스캔하세요", use_column_width=False, width=150)
+st.sidebar.markdown(f"**[접속 링크 복사]**")
+st.sidebar.code(backhaul_share_url, language=None)
+st.sidebar.caption("모바일에서도 편리하게 확인 가능합니다.")
+
+
 # ==========================================
-# 4. 화면 뷰 1: 통합 주문 현황 (메인 대시보드)
+# 4. 화면 뷰 1: 통합 주문 현황
 # ==========================================
 def view_unified_orders():
     render_official_header()
     
-    # 4개 주요 지표 카드 계산
+    # 지표 카드 계산
     total_orders = len(df_orders)
     total_pallets = df_orders['quantity'].sum() if not df_orders.empty else 0
     pending_trucks = len(df_trucks[df_trucks['assigned'] == 0])
@@ -187,13 +204,10 @@ def view_unified_orders():
 
     st.markdown("---")
     
-    # 지도와 요약 표 배치
     col_map, col_list = st.columns([1.6, 1])
-    
     with col_map:
         st.subheader("🌐 Logistics Network (GA - NJ Hub)")
         render_network_map()
-    
     with col_list:
         st.subheader("📍 지역별 수요 집계")
         if df_orders.empty:
@@ -203,7 +217,6 @@ def view_unified_orders():
             summary = df_merged.groupby('region')['quantity'].sum().reset_index()
             st.dataframe(summary.rename(columns={'region':'지역', 'quantity':'총 수량(PLT)'}), use_container_width=True, hide_index=True)
 
-    # 하단 지역별 상세 펼치기
     st.markdown("---")
     regions = ["TX", "FL", "NC_SC"]
     for region in regions:
@@ -237,7 +250,7 @@ def view_group_buy():
         return
 
     deals = gb_data.groupby(['region', 'product'])['quantity'].sum().reset_index()
-    TARGET_CAPACITY = 20 # 트럭 한 대분 기준
+    TARGET_CAPACITY = 20
     
     cols = st.columns(2)
     for i, (_, row) in enumerate(deals.iterrows()):
@@ -264,15 +277,12 @@ def view_truck_dispatch():
             else: st.success(f"### {day}요일 ({region})")
             
             day_trucks = df_trucks[df_trucks['return_day'] == day]
-            
             if day_trucks.empty:
                 st.caption("해당 요일 운행 트럭 정보 없음")
             else:
                 for _, truck in day_trucks.iterrows():
-                    try:
-                        is_assigned = int(truck['assigned']) == 1
-                    except:
-                        is_assigned = False
+                    try: is_assigned = int(truck['assigned']) == 1
+                    except: is_assigned = False
                     
                     status = "✅ 상차 완료" if is_assigned else "🔲 배차 대기"
                     st.markdown(f"**{truck['truck_id']}** ({truck['capacity']} PLT)")
@@ -289,8 +299,7 @@ def view_help():
     
     st.error("### 🚨 배포 오류 해결법 (Plotly 라이브러리)")
     st.markdown("""
-    지도 기능이 작동하지 않거나 에러가 발생한다면 GitHub의 **requirements.txt** 파일을 아래와 같이 수정하세요.
-    
+    지도 기능이 작동하지 않는다면 GitHub의 **requirements.txt** 파일을 아래와 같이 수정하세요.
     ```text
     streamlit
     pandas
@@ -309,7 +318,7 @@ def view_help():
     ```
     """)
 
-# 메인 라우팅 (Main Routing)
+# 메인 라우팅
 if st.session_state.current_menu == "통합 주문 현황":
     view_unified_orders()
 elif st.session_state.current_menu == "공동구매 전용 관리":
