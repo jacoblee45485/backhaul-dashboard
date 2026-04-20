@@ -34,6 +34,13 @@ st.markdown("""
     }
     .metric-label { font-size: 0.9rem; color: #64748b; font-weight: 600; margin-bottom: 5px; }
     .metric-value { font-size: 1.8rem; font-weight: 900; color: #0f172a; }
+    .info-card {
+        background-color: #f8fafc;
+        padding: 20px;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        margin-bottom: 20px;
+    }
     .supplier-card {
         background-color: #f1f5f9;
         padding: 15px;
@@ -69,7 +76,7 @@ def render_official_header():
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. 강화된 데이터 로드 로직 (안정성 강화)
+# 2. 강화된 데이터 로드 로직
 # ==========================================
 
 @st.cache_data(ttl=60)
@@ -127,31 +134,27 @@ if st.sidebar.button("🔄 데이터 강제 새로고침", use_container_width=T
     st.rerun()
 
 st.sidebar.markdown("---")
-all_menus = ["통합 주문 현황", "백홀 파트너 매칭", "공급자 파트너 서치", "데이터 통합 관리", "시스템 도움말"]
+# 신규 탭 '수요자(Customer) 포털' 추가
+all_menus = [
+    "통합 주문 현황", 
+    "수요자(Customer) 포털", 
+    "백홀 파트너(단순물류이송)", 
+    "공급자 파트너 서치", 
+    "데이터 통합 관리", 
+    "시스템 도움말"
+]
 for menu in all_menus:
     if st.sidebar.button(menu, key=f"sidebar_{menu}", use_container_width=True):
         st.session_state.current_menu = menu
-
-# --- 공유 섹션 ---
-st.sidebar.markdown("<br><br>", unsafe_allow_html=True)
-st.sidebar.markdown("---")
-backhaul_share_url = "https://giant-backhaul.streamlit.app" 
-qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={backhaul_share_url}"
-st.sidebar.image(qr_api_url, caption="시스템 접속 QR", width=150)
 
 # ==========================================
 # 4. 화면 뷰 로직
 # ==========================================
 
 def render_network_map():
-    """
-    뉴저지 본사(HQ)와 조지아 물류 허브(Hub)를 중심으로 한 전국 네트워크 시각화 (도시명 제외)
-    """
     if not PLOTLY_AVAILABLE:
-        st.warning("지도 라이브러리(Plotly)를 사용할 수 없습니다.")
+        st.warning("지도 라이브러리 사용 불가")
         return
-
-    # 주요 거점 좌표 및 주 단위 역할 설정 (도시 이름 제거)
     hubs = {
         'NJ (Headquarters)': [40.7128, -74.0060],
         'GA (Logistics Hub)': [33.7490, -84.3880],
@@ -159,152 +162,105 @@ def render_network_map():
         'FL (Regional Hub)': [25.7617, -80.1918],
         'NC/SC (Regional Hub)': [35.2271, -80.8431]
     }
-    
     fig = go.Figure()
-
-    # 조지아 허브에서 각 거점으로 이어지는 경로선 추가 (GA Hub 중심 연결)
     hub_lat, hub_lon = hubs['GA (Logistics Hub)']
     for name, coord in hubs.items():
         if 'GA' not in name:
-            fig.add_trace(go.Scattergeo(
-                locationmode = 'USA-states',
-                lon = [hub_lon, coord[1]],
-                lat = [hub_lat, coord[0]],
-                mode = 'lines',
-                line = dict(width = 2, color = '#E31837' if 'NJ' in name else '#cbd5e1'),
-                opacity = 0.6,
-                hoverinfo = 'none'
-            ))
-
-    # 거점 포인트 및 주 이름 라벨 표시
-    lats = [v[0] for v in hubs.values()]
-    lons = [v[1] for v in hubs.values()]
-    # 텍스트가 굵게 보이도록 HTML 태그 적용
-    names = [f"<b>{n}</b>" for n in hubs.keys()]
+            fig.add_trace(go.Scattergeo(locationmode='USA-states', lon=[hub_lon, coord[1]], lat=[hub_lat, coord[0]], mode='lines', line=dict(width=2, color='#E31837' if 'NJ' in name else '#cbd5e1'), opacity=0.6))
     
-    # 역할별 색상 및 크기 구분
-    colors = []
-    sizes = []
-    for n in hubs.keys():
-        if 'Headquarters' in n:
-            colors.append('#000000') # 본사: 블랙
-            sizes.append(18)
-        elif 'Logistics Hub' in n:
-            colors.append('#E31837') # 허브: 레드
-            sizes.append(16)
-        else:
-            colors.append('#0F4C81') # 일반 거점: 블루
-            sizes.append(12)
-
-    fig.add_trace(go.Scattergeo(
-        locationmode = 'USA-states',
-        lon = lons,
-        lat = lats,
-        text = names,
-        mode = 'markers+text',
-        textposition = "top center",
-        # font_weight 제거 및 폰트 설정
-        textfont = dict(family="sans serif", size=11, color="#0f172a"),
-        marker = dict(
-            size = sizes,
-            color = colors,
-            line = dict(width=2, color='white')
-        ),
-        name = 'Logistics Hubs'
-    ))
-
-    fig.update_layout(
-        geo = dict(
-            scope = 'usa',
-            projection_type = 'albers usa',
-            showland = True,
-            landcolor = "rgb(250, 250, 250)",
-            subunitcolor = "rgb(220, 220, 220)",
-            countrycolor = "rgb(217, 217, 217)",
-            showlakes = True,
-            lakecolor = "rgb(255, 255, 255)"
-        ),
-        margin = dict(l=0, r=0, t=0, b=0),
-        height = 500,
-        showlegend = False
-    )
+    names = [f"<b>{n}</b>" for n in hubs.keys()]
+    colors = ['#000000' if 'Headquarters' in n else '#E31837' if 'Hub' in n else '#0F4C81' for n in hubs.keys()]
+    
+    fig.add_trace(go.Scattergeo(locationmode='USA-states', lon=[v[1] for v in hubs.values()], lat=[v[0] for v in hubs.values()], text=names, mode='markers+text', textposition="top center", textfont=dict(size=11), marker=dict(size=14, color=colors, line=dict(width=2, color='white'))))
+    fig.update_layout(geo=dict(scope='usa', projection_type='albers usa'), margin=dict(l=0, r=0, t=0, b=0), height=450, showlegend=False)
     st.plotly_chart(fig, use_container_width=True)
 
 def view_unified_orders():
     render_official_header()
-    if error_msg: st.error(error_msg)
-    
-    # 상단 지표 카드
     col1, col2, col3, col4 = st.columns(4)
     with col1: st.markdown(f'<div class="metric-card"><div class="metric-label">총 오더</div><div class="metric-value">{len(df_orders)}건</div></div>', unsafe_allow_html=True)
     with col2: st.markdown(f'<div class="metric-card"><div class="metric-label">총 물량</div><div class="metric-value">{df_orders["quantity"].sum()} PLT</div></div>', unsafe_allow_html=True)
     with col3: st.markdown(f'<div class="metric-card"><div class="metric-label">운행 트럭</div><div class="metric-value">{len(df_trucks)}대</div></div>', unsafe_allow_html=True)
     with col4: st.markdown(f'<div class="metric-card"><div class="metric-label">허브 매칭률</div><div class="metric-value">72%</div></div>', unsafe_allow_html=True)
-    
     st.markdown("---")
-    
-    # 지도와 리스트 병렬 배치
     c1, c2 = st.columns([1.6, 1])
     with c1:
-        st.subheader("🌐 NJ 본사 & GA 허브 네트워크 시스템")
+        st.subheader("🌐 NJ 본사 & GA 허브 네트워크")
         render_network_map()
     with c2:
         st.subheader("📍 지역별 실시간 수요")
-        if df_orders.empty:
-            st.info("현재 접수된 주문이 없습니다.")
+        region_sum = df_orders.groupby('region')['quantity'].sum().reset_index()
+        st.dataframe(region_sum, use_container_width=True, hide_index=True)
+
+def view_customer_portal():
+    render_official_header()
+    st.subheader("👤 수요자(Customer) 포털")
+    st.markdown("고객사별 주문 상태 및 공동구매 참여 현황을 관리합니다.")
+
+    # 고객 요약 지표
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        active_customers = df_clients[df_clients['type'] != 'Backhaul_Partner'].shape[0]
+        st.markdown(f'<div class="metric-card"><div class="metric-label">활성 고객사</div><div class="metric-value">{active_customers}개</div></div>', unsafe_allow_html=True)
+    with c2:
+        pending_orders = df_orders.shape[0]
+        st.markdown(f'<div class="metric-card"><div class="metric-label">진행 중인 주문</div><div class="metric-value">{pending_orders}건</div></div>', unsafe_allow_html=True)
+    with c3:
+        st.markdown(f'<div class="metric-card"><div class="metric-label">평균 배송 리드타임</div><div class="metric-value">2.4일</div></div>', unsafe_allow_html=True)
+
+    st.markdown("---")
+    
+    tab1, tab2 = st.tabs(["📋 주문 추적", "🤝 공동구매(Group Buy) 현황"])
+    
+    with tab1:
+        st.write("### 🔍 고객사별 주문 조회")
+        search_term = st.text_input("고객사 이름 또는 ID 입력")
+        if not df_orders.empty and not df_clients.empty:
+            merged = pd.merge(df_orders, df_clients, on='client_id', how='left')
+            if search_term:
+                merged = merged[merged['name'].str.contains(search_term, case=False, na=False)]
+            st.dataframe(merged[['order_id', 'name', 'product', 'quantity', 'region']], use_container_width=True, hide_index=True)
         else:
-            region_sum = df_orders.groupby('region')['quantity'].sum().reset_index()
-            st.dataframe(region_sum.rename(columns={'region':'지역', 'quantity':'수량(PLT)'}), use_container_width=True, hide_index=True)
-            
-            st.markdown("---")
-            st.subheader("📦 본사(NJ) 긴급 오더 현황")
-            nj_orders = df_orders[df_orders['region'].str.contains('NJ|NY', case=False, na=False)]
-            if nj_orders.empty:
-                st.caption("진행 중인 본사 직할 오더 없음")
-            else:
-                st.dataframe(nj_orders[['product', 'quantity']].tail(5), use_container_width=True, hide_index=True)
+            st.info("조회할 주문 데이터가 없습니다.")
+
+    with tab2:
+        st.write("### 📢 공동구매 진행 상태")
+        st.info("최소 주문 수량(MOQ) 충족 시 조지아 허브에서 일괄 발송됩니다.")
+        
+        # 공동구매 시뮬레이션 데이터 (실제 시트 type 기반으로 필터링 가능)
+        gb_items = [
+            {"품목": "CJ 비비고 만두 (Pallet)", "지역": "TX", "참여도": 0.85, "잔여": "3 PLT"},
+            {"품목": "신라면 컵 (Bulk)", "지역": "FL", "참여도": 0.40, "잔여": "12 PLT"},
+            {"품목": "청정원 고추장", "지역": "NC", "참여도": 1.0, "잔여": "완료"}
+        ]
+        
+        for item in gb_items:
+            with st.expander(f"{item['품목']} ({item['지역']})"):
+                st.write(f"현재 모집 상태: **{int(item['참여도']*100)}%**")
+                st.progress(item['참여도'])
+                if item['잔여'] == "완료":
+                    st.success("🎉 공동구매 확정! 조지아 허브에서 배차 대기 중")
+                else:
+                    st.warning(f"💡 {item['잔여']}만 더 모이면 최저가 운송이 가능합니다.")
 
 def view_backhaul_matching():
     render_official_header()
-    st.subheader("🤝 조지아(GA) 허브 회항 물량 파트너 매칭")
+    st.subheader("🤝 조지아(GA) 허브 회항 물량 파트너(단순물류이송)")
     st.markdown("타 지역 배송 후 조지아 물류 허브로 돌아올 때 실을 수 있는 'Inbound GA Hub' 화물 정보입니다.")
-    
     col_a, col_b = st.columns([1, 1])
     with col_a:
-        st.markdown("### 🏟️ 허브 유입 화물 소스 (Hub Inbound)")
+        st.markdown("### 🏟️ 허브 유입 화물 소스")
         st.markdown("""
-        <div class="supplier-card">
-            <span class="match-tag high-priority">TX -> GA Hub</span>
-            <b>🥩 하이랜드 미트 (Highland Meats)</b><br>
-            - 품목: 텍사스산 냉장 소고기 / <b>조지아 허브 입고용</b>
-        </div>
-        <div class="supplier-card">
-            <span class="match-tag" style="background-color: #000000; color: white;">NJ -> GA Hub</span>
-            <b>🏢 NJ 본사 재고 이동 (HQ Internal)</b><br>
-            - 품목: 본사 직송 수입 식자재 / <b>허브 보충 재고</b>
-        </div>
+        <div class="supplier-card"><span class="match-tag high-priority">TX -> GA Hub</span><b>🥩 하이랜드 미트</b><br>- 텍사스산 냉장 소고기 / 조지아 허브 입고용</div>
+        <div class="supplier-card"><span class="match-tag" style="background-color: #000000; color: white;">NJ -> GA Hub</span><b>🏢 NJ 본사 재고 이동</b><br>- 본사 직송 수입 식자재 / 허브 보충 재고</div>
         """, unsafe_allow_html=True)
-
     with col_b:
-        st.markdown("### 📉 물류 최적화 분석")
-        st.info("뉴저지 본사의 수입 오더와 조지아 허브의 배송 트럭을 매칭하여 '본사-허브' 간 내부 물류 비용을 제로화하는 것이 목표입니다.")
+        st.info("뉴저지 본사의 수입 오더와 조지아 허브의 배송 트럭을 매칭하여 내부 물류 비용을 제로화합니다.")
 
 def view_data_management():
     render_official_header()
-    st.subheader("⚙️ 데이터 통합 관리 (Interactive Editor)")
-    st.markdown("본사(NJ)와 허브(GA)의 데이터를 앱 내에서 통합 관리합니다.")
-    
-    m_tab1, m_tab2 = st.tabs(["오더/재고 관리", "허브 배차 수정"])
-    
-    with m_tab1:
-        st.write("📝 **실시간 오더 데이터 편집**")
-        edited_orders = st.data_editor(df_orders, use_container_width=True, num_rows="dynamic")
-            
-    with m_tab2:
-        st.write("🚛 **조지아 허브 배차 관리**")
-        edited_trucks = st.data_editor(df_trucks, use_container_width=True, num_rows="fixed")
-        if st.button("허브 배차 승인"):
-            st.toast("조지아 물류센터로 승인 신호가 전송되었습니다.")
+    st.subheader("⚙️ 데이터 통합 관리")
+    st.data_editor(df_orders, use_container_width=True, num_rows="dynamic")
 
 def view_supplier_search():
     render_official_header()
@@ -313,17 +269,15 @@ def view_supplier_search():
 
 def view_help():
     render_official_header()
-    st.subheader("🛠️ 시스템 구조 안내")
-    st.markdown("""
-    - **NJ Headquarters**: 시스템의 컨트롤 타워 및 수입 물량 관리
-    - **GA Logistics Hub**: 전국 배송의 중심점 및 백홀 매칭 최적화 지점
-    - **Regional Hubs**: 텍사스, 플로리다 등 주요 수요처
-    """)
+    st.subheader("🛠️ 시스템 구조")
+    st.markdown("- **수요자 포털**: 고객사들의 주문 추적 및 공동구매 혜택 관리\n- **GA Hub**: 전국 배송 및 백홀 매칭의 중심")
 
 # 메인 라우팅
 if st.session_state.current_menu == "통합 주문 현황":
     view_unified_orders()
-elif st.session_state.current_menu == "백홀 파트너 매칭":
+elif st.session_state.current_menu == "수요자(Customer) 포털":
+    view_customer_portal()
+elif st.session_state.current_menu == "백홀 파트너(단순물류이송)":
     view_backhaul_matching()
 elif st.session_state.current_menu == "공급자 파트너 서치":
     view_supplier_search()
