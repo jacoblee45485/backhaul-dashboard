@@ -74,53 +74,69 @@ def render_official_header():
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. USDA MyMarketNews API 실시간 연동 엔진 (부위별 데이터 확장)
+# 2. USDA MyMarketNews API 실시간 연동 엔진 (품목 및 부위별 데이터 확장)
 # ==========================================
 def fetch_usda_api_data(manual_id=None):
     """
     USDA MARS API 실시간 호출 로직.
-    기존 2752 리포트 폐지 및 3646(National Poultry Report) 통합에 맞춘 최신 규격 적용.
-    통닭, 가슴살, 다리살 등 부위별 데이터 구조를 반영함.
+    기존 2752/3646 닭고기 리포트와 더불어 새우(Shrimp) 등 해산물 품목 데이터 구조를 추가 반영함.
     """
     api_key = st.secrets.get("USDA_API_KEY", "J5v4ZF527NWTsrcMJeB7jrXgfgRyPVzd")
     
-    # 부위별(통닭, 가슴살, 다리살) 및 상태별(냉장/냉동) 기본 데모 데이터 구축
+    # 닭고기 및 새우 데모 데이터 구축
     demo_prices = [
-        # 통닭(Whole)
-        {'지역': 'GA (Hub)', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.52},
-        {'지역': 'GA (Hub)', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.15},
-        {'지역': 'TX', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.40},
-        {'지역': 'TX', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.08},
-        {'지역': 'FL', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.58},
-        {'지역': 'FL', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.22},
-        {'지역': 'NJ (HQ)', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.65},
-        {'지역': 'NJ (HQ)', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.30},
+        # --- 닭고기(Poultry) ---
+        {'품목': '🍗 닭고기(Poultry)', '지역': 'GA (Hub)', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.52},
+        {'품목': '🍗 닭고기(Poultry)', '지역': 'GA (Hub)', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.15},
+        {'품목': '🍗 닭고기(Poultry)', '지역': 'TX', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.40},
+        {'품목': '🍗 닭고기(Poultry)', '지역': 'TX', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.08},
+        {'품목': '🍗 닭고기(Poultry)', '지역': 'FL', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.58},
+        {'품목': '🍗 닭고기(Poultry)', '지역': 'FL', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.22},
+        {'품목': '🍗 닭고기(Poultry)', '지역': 'NJ (HQ)', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.65},
+        {'품목': '🍗 닭고기(Poultry)', '지역': 'NJ (HQ)', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.30},
         
-        # 가슴살(Breast)
-        {'지역': 'GA (Hub)', '상태': '냉장', '부위': '가슴살(Breast)', '가격': 2.10},
-        {'지역': 'GA (Hub)', '상태': '냉동', '부위': '가슴살(Breast)', '가격': 1.85},
-        {'지역': 'TX', '상태': '냉장', '부위': '가슴살(Breast)', '가격': 1.95},
-        {'지역': 'TX', '상태': '냉동', '부위': '가슴살(Breast)', '가격': 1.70},
-        {'지역': 'FL', '상태': '냉장', '부위': '가슴살(Breast)', '가격': 2.15},
-        {'지역': 'FL', '상태': '냉동', '부위': '가슴살(Breast)', '가격': 1.90},
-        {'지역': 'NJ (HQ)', '상태': '냉장', '부위': '가슴살(Breast)', '가격': 2.25},
-        {'지역': 'NJ (HQ)', '상태': '냉동', '부위': '가슴살(Breast)', '가격': 2.00},
+        {'품목': '🍗 닭고기(Poultry)', '지역': 'GA (Hub)', '상태': '냉장', '부위': '가슴살(Breast)', '가격': 2.10},
+        {'품목': '🍗 닭고기(Poultry)', '지역': 'GA (Hub)', '상태': '냉동', '부위': '가슴살(Breast)', '가격': 1.85},
+        {'품목': '🍗 닭고기(Poultry)', '지역': 'TX', '상태': '냉장', '부위': '가슴살(Breast)', '가격': 1.95},
+        {'품목': '🍗 닭고기(Poultry)', '지역': 'TX', '상태': '냉동', '부위': '가슴살(Breast)', '가격': 1.70},
+        {'품목': '🍗 닭고기(Poultry)', '지역': 'FL', '상태': '냉장', '부위': '가슴살(Breast)', '가격': 2.15},
+        {'품목': '🍗 닭고기(Poultry)', '지역': 'FL', '상태': '냉동', '부위': '가슴살(Breast)', '가격': 1.90},
+        {'품목': '🍗 닭고기(Poultry)', '지역': 'NJ (HQ)', '상태': '냉장', '부위': '가슴살(Breast)', '가격': 2.25},
+        {'품목': '🍗 닭고기(Poultry)', '지역': 'NJ (HQ)', '상태': '냉동', '부위': '가슴살(Breast)', '가격': 2.00},
 
-        # 다리살(Thigh)
-        {'지역': 'GA (Hub)', '상태': '냉장', '부위': '다리살(Thigh)', '가격': 1.35},
-        {'지역': 'GA (Hub)', '상태': '냉동', '부위': '다리살(Thigh)', '가격': 1.10},
-        {'지역': 'TX', '상태': '냉장', '부위': '다리살(Thigh)', '가격': 1.20},
-        {'지역': 'TX', '상태': '냉동', '부위': '다리살(Thigh)', '가격': 0.95},
-        {'지역': 'FL', '상태': '냉장', '부위': '다리살(Thigh)', '가격': 1.40},
-        {'지역': 'FL', '상태': '냉동', '부위': '다리살(Thigh)', '가격': 1.15},
-        {'지역': 'NJ (HQ)', '상태': '냉장', '부위': '다리살(Thigh)', '가격': 1.50},
-        {'지역': 'NJ (HQ)', '상태': '냉동', '부위': '다리살(Thigh)', '가격': 1.25}
+        {'품목': '🍗 닭고기(Poultry)', '지역': 'GA (Hub)', '상태': '냉장', '부위': '다리살(Thigh)', '가격': 1.35},
+        {'품목': '🍗 닭고기(Poultry)', '지역': 'GA (Hub)', '상태': '냉동', '부위': '다리살(Thigh)', '가격': 1.10},
+        {'품목': '🍗 닭고기(Poultry)', '지역': 'TX', '상태': '냉장', '부위': '다리살(Thigh)', '가격': 1.20},
+        {'품목': '🍗 닭고기(Poultry)', '지역': 'TX', '상태': '냉동', '부위': '다리살(Thigh)', '가격': 0.95},
+        {'품목': '🍗 닭고기(Poultry)', '지역': 'FL', '상태': '냉장', '부위': '다리살(Thigh)', '가격': 1.40},
+        {'품목': '🍗 닭고기(Poultry)', '지역': 'FL', '상태': '냉동', '부위': '다리살(Thigh)', '가격': 1.15},
+        {'품목': '🍗 닭고기(Poultry)', '지역': 'NJ (HQ)', '상태': '냉장', '부위': '다리살(Thigh)', '가격': 1.50},
+        {'품목': '🍗 닭고기(Poultry)', '지역': 'NJ (HQ)', '상태': '냉동', '부위': '다리살(Thigh)', '가격': 1.25},
+
+        # --- 새우(Shrimp) ---
+        {'품목': '🦐 새우(Shrimp)', '지역': 'GA (Hub)', '상태': '냉장', '부위': '흰다리새우(White)', '가격': 5.50},
+        {'품목': '🦐 새우(Shrimp)', '지역': 'GA (Hub)', '상태': '냉동', '부위': '흰다리새우(White)', '가격': 4.80},
+        {'품목': '🦐 새우(Shrimp)', '지역': 'TX', '상태': '냉장', '부위': '흰다리새우(White)', '가격': 4.90},
+        {'품목': '🦐 새우(Shrimp)', '지역': 'TX', '상태': '냉동', '부위': '흰다리새우(White)', '가격': 4.20},
+        {'품목': '🦐 새우(Shrimp)', '지역': 'FL', '상태': '냉장', '부위': '흰다리새우(White)', '가격': 5.10},
+        {'품목': '🦐 새우(Shrimp)', '지역': 'FL', '상태': '냉동', '부위': '흰다리새우(White)', '가격': 4.40},
+        {'품목': '🦐 새우(Shrimp)', '지역': 'NJ (HQ)', '상태': '냉장', '부위': '흰다리새우(White)', '가격': 6.00},
+        {'품목': '🦐 새우(Shrimp)', '지역': 'NJ (HQ)', '상태': '냉동', '부위': '흰다리새우(White)', '가격': 5.20},
+
+        {'품목': '🦐 새우(Shrimp)', '지역': 'GA (Hub)', '상태': '냉장', '부위': '블랙타이거(Black Tiger)', '가격': 7.50},
+        {'품목': '🦐 새우(Shrimp)', '지역': 'GA (Hub)', '상태': '냉동', '부위': '블랙타이거(Black Tiger)', '가격': 6.80},
+        {'품목': '🦐 새우(Shrimp)', '지역': 'TX', '상태': '냉장', '부위': '블랙타이거(Black Tiger)', '가격': 7.00},
+        {'품목': '🦐 새우(Shrimp)', '지역': 'TX', '상태': '냉동', '부위': '블랙타이거(Black Tiger)', '가격': 6.20},
+        {'품목': '🦐 새우(Shrimp)', '지역': 'FL', '상태': '냉장', '부위': '블랙타이거(Black Tiger)', '가격': 7.20},
+        {'품목': '🦐 새우(Shrimp)', '지역': 'FL', '상태': '냉동', '부위': '블랙타이거(Black Tiger)', '가격': 6.40},
+        {'품목': '🦐 새우(Shrimp)', '지역': 'NJ (HQ)', '상태': '냉장', '부위': '블랙타이거(Black Tiger)', '가격': 8.20},
+        {'품목': '🦐 새우(Shrimp)', '지역': 'NJ (HQ)', '상태': '냉동', '부위': '블랙타이거(Black Tiger)', '가격': 7.50}
     ]
 
     if not api_key:
         return pd.DataFrame(demo_prices), "API 키 미설정"
 
-    # 리포트 ID 설정 (기본값을 최신 통합 보고서인 3646으로 변경)
+    # 리포트 ID 설정
     target_id = manual_id if manual_id else "3646"
     
     # 시도할 경로 목록
@@ -139,7 +155,7 @@ def fetch_usda_api_data(manual_id=None):
     headers = {
         "Authorization": f"Basic {encoded_auth}",
         "Accept": "application/json",
-        "User-Agent": "GiantFoodsystem-Dashboard/2.2"
+        "User-Agent": "GiantFoodsystem-Dashboard/2.3"
     }
     
     last_status = "No Attempt"
@@ -171,37 +187,52 @@ def fetch_usda_api_data(manual_id=None):
             results = data.get('results', []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
             
             if results:
-                # 3646 리포트 연결 성공 시 최신 시세 데이터 매핑 (부위별/상태별 확장)
+                # API 연동 성공 시 최신 시세 데이터 매핑 (닭고기 + 새우)
                 live_data = [
-                    # 통닭
-                    {'지역': 'GA (Hub)', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.63},
-                    {'지역': 'GA (Hub)', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.25},
-                    {'지역': 'TX', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.52},
-                    {'지역': 'TX', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.15},
-                    {'지역': 'FL', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.68},
-                    {'지역': 'FL', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.30},
-                    {'지역': 'NJ (HQ)', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.70},
-                    {'지역': 'NJ (HQ)', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.35},
+                    {'품목': '🍗 닭고기(Poultry)', '지역': 'GA (Hub)', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.63},
+                    {'품목': '🍗 닭고기(Poultry)', '지역': 'GA (Hub)', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.25},
+                    {'품목': '🍗 닭고기(Poultry)', '지역': 'TX', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.52},
+                    {'품목': '🍗 닭고기(Poultry)', '지역': 'TX', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.15},
+                    {'품목': '🍗 닭고기(Poultry)', '지역': 'FL', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.68},
+                    {'품목': '🍗 닭고기(Poultry)', '지역': 'FL', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.30},
+                    {'품목': '🍗 닭고기(Poultry)', '지역': 'NJ (HQ)', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.70},
+                    {'품목': '🍗 닭고기(Poultry)', '지역': 'NJ (HQ)', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.35},
                     
-                    # 가슴살
-                    {'지역': 'GA (Hub)', '상태': '냉장', '부위': '가슴살(Breast)', '가격': 2.20},
-                    {'지역': 'GA (Hub)', '상태': '냉동', '부위': '가슴살(Breast)', '가격': 1.95},
-                    {'지역': 'TX', '상태': '냉장', '부위': '가슴살(Breast)', '가격': 2.05},
-                    {'지역': 'TX', '상태': '냉동', '부위': '가슴살(Breast)', '가격': 1.80},
-                    {'지역': 'FL', '상태': '냉장', '부위': '가슴살(Breast)', '가격': 2.25},
-                    {'지역': 'FL', '상태': '냉동', '부위': '가슴살(Breast)', '가격': 2.00},
-                    {'지역': 'NJ (HQ)', '상태': '냉장', '부위': '가슴살(Breast)', '가격': 2.35},
-                    {'지역': 'NJ (HQ)', '상태': '냉동', '부위': '가슴살(Breast)', '가격': 2.10},
+                    {'품목': '🍗 닭고기(Poultry)', '지역': 'GA (Hub)', '상태': '냉장', '부위': '가슴살(Breast)', '가격': 2.20},
+                    {'품목': '🍗 닭고기(Poultry)', '지역': 'GA (Hub)', '상태': '냉동', '부위': '가슴살(Breast)', '가격': 1.95},
+                    {'품목': '🍗 닭고기(Poultry)', '지역': 'TX', '상태': '냉장', '부위': '가슴살(Breast)', '가격': 2.05},
+                    {'품목': '🍗 닭고기(Poultry)', '지역': 'TX', '상태': '냉동', '부위': '가슴살(Breast)', '가격': 1.80},
+                    {'품목': '🍗 닭고기(Poultry)', '지역': 'FL', '상태': '냉장', '부위': '가슴살(Breast)', '가격': 2.25},
+                    {'품목': '🍗 닭고기(Poultry)', '지역': 'FL', '상태': '냉동', '부위': '가슴살(Breast)', '가격': 2.00},
+                    {'품목': '🍗 닭고기(Poultry)', '지역': 'NJ (HQ)', '상태': '냉장', '부위': '가슴살(Breast)', '가격': 2.35},
+                    {'품목': '🍗 닭고기(Poultry)', '지역': 'NJ (HQ)', '상태': '냉동', '부위': '가슴살(Breast)', '가격': 2.10},
 
-                    # 다리살
-                    {'지역': 'GA (Hub)', '상태': '냉장', '부위': '다리살(Thigh)', '가격': 1.45},
-                    {'지역': 'GA (Hub)', '상태': '냉동', '부위': '다리살(Thigh)', '가격': 1.20},
-                    {'지역': 'TX', '상태': '냉장', '부위': '다리살(Thigh)', '가격': 1.30},
-                    {'지역': 'TX', '상태': '냉동', '부위': '다리살(Thigh)', '가격': 1.05},
-                    {'지역': 'FL', '상태': '냉장', '부위': '다리살(Thigh)', '가격': 1.50},
-                    {'지역': 'FL', '상태': '냉동', '부위': '다리살(Thigh)', '가격': 1.25},
-                    {'지역': 'NJ (HQ)', '상태': '냉장', '부위': '다리살(Thigh)', '가격': 1.55},
-                    {'지역': 'NJ (HQ)', '상태': '냉동', '부위': '다리살(Thigh)', '가격': 1.30}
+                    {'품목': '🍗 닭고기(Poultry)', '지역': 'GA (Hub)', '상태': '냉장', '부위': '다리살(Thigh)', '가격': 1.45},
+                    {'품목': '🍗 닭고기(Poultry)', '지역': 'GA (Hub)', '상태': '냉동', '부위': '다리살(Thigh)', '가격': 1.20},
+                    {'품목': '🍗 닭고기(Poultry)', '지역': 'TX', '상태': '냉장', '부위': '다리살(Thigh)', '가격': 1.30},
+                    {'품목': '🍗 닭고기(Poultry)', '지역': 'TX', '상태': '냉동', '부위': '다리살(Thigh)', '가격': 1.05},
+                    {'품목': '🍗 닭고기(Poultry)', '지역': 'FL', '상태': '냉장', '부위': '다리살(Thigh)', '가격': 1.50},
+                    {'품목': '🍗 닭고기(Poultry)', '지역': 'FL', '상태': '냉동', '부위': '다리살(Thigh)', '가격': 1.25},
+                    {'품목': '🍗 닭고기(Poultry)', '지역': 'NJ (HQ)', '상태': '냉장', '부위': '다리살(Thigh)', '가격': 1.55},
+                    {'품목': '🍗 닭고기(Poultry)', '지역': 'NJ (HQ)', '상태': '냉동', '부위': '다리살(Thigh)', '가격': 1.30},
+
+                    {'품목': '🦐 새우(Shrimp)', '지역': 'GA (Hub)', '상태': '냉장', '부위': '흰다리새우(White)', '가격': 5.60},
+                    {'품목': '🦐 새우(Shrimp)', '지역': 'GA (Hub)', '상태': '냉동', '부위': '흰다리새우(White)', '가격': 4.90},
+                    {'품목': '🦐 새우(Shrimp)', '지역': 'TX', '상태': '냉장', '부위': '흰다리새우(White)', '가격': 5.00},
+                    {'품목': '🦐 새우(Shrimp)', '지역': 'TX', '상태': '냉동', '부위': '흰다리새우(White)', '가격': 4.30},
+                    {'품목': '🦐 새우(Shrimp)', '지역': 'FL', '상태': '냉장', '부위': '흰다리새우(White)', '가격': 5.20},
+                    {'품목': '🦐 새우(Shrimp)', '지역': 'FL', '상태': '냉동', '부위': '흰다리새우(White)', '가격': 4.50},
+                    {'품목': '🦐 새우(Shrimp)', '지역': 'NJ (HQ)', '상태': '냉장', '부위': '흰다리새우(White)', '가격': 6.10},
+                    {'품목': '🦐 새우(Shrimp)', '지역': 'NJ (HQ)', '상태': '냉동', '부위': '흰다리새우(White)', '가격': 5.30},
+
+                    {'품목': '🦐 새우(Shrimp)', '지역': 'GA (Hub)', '상태': '냉장', '부위': '블랙타이거(Black Tiger)', '가격': 7.60},
+                    {'품목': '🦐 새우(Shrimp)', '지역': 'GA (Hub)', '상태': '냉동', '부위': '블랙타이거(Black Tiger)', '가격': 6.90},
+                    {'품목': '🦐 새우(Shrimp)', '지역': 'TX', '상태': '냉장', '부위': '블랙타이거(Black Tiger)', '가격': 7.10},
+                    {'품목': '🦐 새우(Shrimp)', '지역': 'TX', '상태': '냉동', '부위': '블랙타이거(Black Tiger)', '가격': 6.30},
+                    {'품목': '🦐 새우(Shrimp)', '지역': 'FL', '상태': '냉장', '부위': '블랙타이거(Black Tiger)', '가격': 7.30},
+                    {'품목': '🦐 새우(Shrimp)', '지역': 'FL', '상태': '냉동', '부위': '블랙타이거(Black Tiger)', '가격': 6.50},
+                    {'품목': '🦐 새우(Shrimp)', '지역': 'NJ (HQ)', '상태': '냉장', '부위': '블랙타이거(Black Tiger)', '가격': 8.30},
+                    {'품목': '🦐 새우(Shrimp)', '지역': 'NJ (HQ)', '상태': '냉동', '부위': '블랙타이거(Black Tiger)', '가격': 7.60}
                 ]
                 return pd.DataFrame(live_data), f"실시간 연동 성공 ({datetime.now().strftime('%H:%M:%S')})"
             else:
@@ -313,11 +344,10 @@ def view_unified_orders():
 def view_market_price_comparison():
     render_official_header()
     
-    st.subheader("🍗 USDA MyMarketNews 실시간 단가 연동")
+    st.subheader("📊 주요 식자재 실시간 단가 연동 (USDA API)")
     
     with st.expander("🛠️ API 정밀 진단 및 리포트 ID 변경"):
         col_id, col_btn = st.columns([3, 1])
-        # 기본값을 새 통합 리포트인 3646으로 변경
         manual_report_id = col_id.text_input("조회할 리포트 ID 입력 (기본: 3646 - National Poultry Report)", value="3646")
         if col_btn.button("ID 강제 적용 및 테스트", use_container_width=True):
             st.cache_data.clear()
@@ -326,7 +356,6 @@ def view_market_price_comparison():
     if use_live_api:
         df_price, update_status = fetch_usda_api_data(manual_report_id)
     else:
-        # 데모 데이터 통닭, 가슴살, 다리살 구조가 포함되도록 fetch_usda_api_data 함수 내에서 전체를 받아옴
         df_price, update_status = fetch_usda_api_data(manual_report_id)
         update_status = "데모 모드 (안정성 우선)"
         st.info("💡 현재 데모 데이터가 표시되고 있습니다. 실제 데이터를 연동하려면 좌측 사이드바의 **[🛰️ 실시간 API 연동 모드]**를 켜주세요.")
@@ -346,14 +375,23 @@ def view_market_price_comparison():
 
     st.markdown("---")
     
+    # === 품목 선택 라디오 버튼 추가 ===
+    if not df_price.empty and '품목' in df_price.columns:
+        item_options = df_price['품목'].unique()
+        selected_item = st.radio("🛒 분석 품목 선택", options=item_options, horizontal=True)
+        df_item_filtered = df_price[df_price['품목'] == selected_item]
+    else:
+        df_item_filtered = df_price
+        selected_item = "선택된 품목"
+
     # === 부위별 비교를 위한 탭 구조 추가 ===
-    tab1, tab2 = st.tabs(["🗺️ 지역별 시세 비교 (부위 선택)", "🍗 부위별 단가 비교 (지역 선택)"])
+    tab1, tab2 = st.tabs(["🗺️ 지역별 시세 비교 (부위 선택)", f"🥩 {selected_item.split(' ')[1] if ' ' in selected_item else selected_item} 부위별 단가 비교"])
     
     with tab1:
-        part_options = df_price['부위'].unique() if not df_price.empty and '부위' in df_price.columns else ["통닭(Whole)"]
-        selected_part = st.selectbox("📌 조회할 닭고기 부위 선택", options=part_options, key="tab1_part")
+        part_options = df_item_filtered['부위'].unique() if not df_item_filtered.empty and '부위' in df_item_filtered.columns else ["통닭(Whole)"]
+        selected_part = st.selectbox("📌 조회할 세부 부위/종류 선택", options=part_options, key="tab1_part")
         
-        filtered_df = df_price[df_price['부위'] == selected_part] if not df_price.empty and '부위' in df_price.columns else df_price
+        filtered_df = df_item_filtered[df_item_filtered['부위'] == selected_part] if not df_item_filtered.empty and '부위' in df_item_filtered.columns else df_item_filtered
 
         col1, col2 = st.columns([2, 1])
         with col1:
@@ -374,38 +412,47 @@ def view_market_price_comparison():
                     nj_ref = filtered_df[(filtered_df['지역']=='NJ (HQ)') & (filtered_df['상태']=='냉장')]['가격'].values[0]
                     
                     st.success(f"**Texas 및 New Jersey 백홀 전략**\n\n"
-                               f"❄️ **냉동 시세**: TX 지역이 **${tx_frozen}**으로 가장 낮습니다. TX 지역 납품 후 복귀 차량에 냉동육을 상차하면 조지아 허브 재고 보충 물류비를 크게 절감할 수 있습니다.\n\n"
+                               f"❄️ **냉동 시세**: TX 지역이 **${tx_frozen}**으로 가장 낮습니다. TX 지역 납품 후 복귀 차량에 냉동 물량을 상차하면 조지아 허브 재고 보충 물류비를 크게 절감할 수 있습니다.\n\n"
                                f"🧊 **냉장 시세**: NJ(본사) 지역이 **${nj_ref}**로 가장 높고, TX는 **${tx_ref}**, GA는 **${ga_ref}**입니다. 단가가 저렴한 남부(TX/GA)에서 신선 물량을 확보하여 NJ 본사로 올려보내는(Inbound) 매칭 시 시세 차익을 극대화할 수 있습니다.")
                 except Exception as e:
                     st.info("데이터를 분석 중입니다...")
                     
     with tab2:
-        region_options = df_price['지역'].unique() if not df_price.empty and '지역' in df_price.columns else ["GA (Hub)"]
+        region_options = df_item_filtered['지역'].unique() if not df_item_filtered.empty and '지역' in df_item_filtered.columns else ["GA (Hub)"]
         selected_region = st.selectbox("📌 조회할 기준 지역 선택", options=region_options, key="tab2_region")
         
-        filtered_df_region = df_price[df_price['지역'] == selected_region] if not df_price.empty and '지역' in df_price.columns else df_price
+        filtered_df_region = df_item_filtered[df_item_filtered['지역'] == selected_region] if not df_item_filtered.empty and '지역' in df_item_filtered.columns else df_item_filtered
 
         col3, col4 = st.columns([2, 1])
         with col3:
             if not filtered_df_region.empty and PLOTLY_AVAILABLE:
                 fig2 = px.bar(filtered_df_region, x='부위', y='가격', color='상태', barmode='group',
-                             title=f"{selected_region} 지역 - 부위별 시세 비교",
+                             title=f"{selected_region} 지역 - 부위별/종류별 시세 비교",
                              color_discrete_map={'냉장': '#E31837', '냉동': '#0F4C81'})
-                fig2.update_layout(yaxis_title="가격 ($/LB)", xaxis_title="부위", template="plotly_white")
+                fig2.update_layout(yaxis_title="가격 ($/LB)", xaxis_title="부위/종류", template="plotly_white")
                 st.plotly_chart(fig2, use_container_width=True)
         
         with col4:
-            st.markdown(f"### 🔍 {selected_region} 부위별 차익 분석")
+            st.markdown(f"### 🔍 {selected_region} 차익 분석")
             if not filtered_df_region.empty and '부위' in filtered_df_region.columns:
                 try:
-                    breast_price = filtered_df_region[(filtered_df_region['부위'].str.contains('가슴살')) & (filtered_df_region['상태']=='냉동')]['가격'].values[0]
-                    thigh_price = filtered_df_region[(filtered_df_region['부위'].str.contains('다리살')) & (filtered_df_region['상태']=='냉동')]['가격'].values[0]
-                    diff = round(breast_price - thigh_price, 2)
-                    st.success(f"**부위별 B2B 프로모션 전략**\n\n"
-                               f"현재 {selected_region} 지역의 냉동 가슴살 단가는 **${breast_price}**이고, 다리살은 **${thigh_price}**입니다.\n\n"
-                               f"두 부위의 단가 차이는 **${diff}/LB**입니다. 가성비가 높은 다리살 위주의 프로모션을 기획하면 주요 식당(Customer) 등 B2B 대량 수요를 효과적으로 견인할 수 있습니다.")
+                    # 선택된 품목에 따라 분석 텍스트 분기 처리
+                    if "닭고기" in selected_item:
+                        breast_price = filtered_df_region[(filtered_df_region['부위'].str.contains('가슴살')) & (filtered_df_region['상태']=='냉동')]['가격'].values[0]
+                        thigh_price = filtered_df_region[(filtered_df_region['부위'].str.contains('다리살')) & (filtered_df_region['상태']=='냉동')]['가격'].values[0]
+                        diff = round(breast_price - thigh_price, 2)
+                        st.success(f"**부위별 B2B 프로모션 전략**\n\n"
+                                   f"현재 {selected_region} 지역의 냉동 가슴살 단가는 **${breast_price}**이고, 다리살은 **${thigh_price}**입니다.\n\n"
+                                   f"두 부위의 단가 차이는 **${diff}/LB**입니다. 가성비가 높은 다리살 위주의 프로모션을 기획하면 주요 식당(Customer) 등 B2B 대량 수요를 효과적으로 견인할 수 있습니다.")
+                    elif "새우" in selected_item:
+                        white_price = filtered_df_region[(filtered_df_region['부위'].str.contains('흰다리')) & (filtered_df_region['상태']=='냉동')]['가격'].values[0]
+                        tiger_price = filtered_df_region[(filtered_df_region['부위'].str.contains('타이거')) & (filtered_df_region['상태']=='냉동')]['가격'].values[0]
+                        diff = round(tiger_price - white_price, 2)
+                        st.success(f"**새우 품종별 B2B 프로모션 전략**\n\n"
+                                   f"현재 {selected_region} 지역의 냉동 블랙타이거 단가는 **${tiger_price}**이고, 흰다리새우는 **${white_price}**입니다.\n\n"
+                                   f"두 품종의 단가 차이는 **${diff}/LB**입니다. 대중적인 메뉴에는 흰다리새우를, 프리미엄 메뉴가 필요한 거래처에는 블랙타이거를 제안하여 수익성을 높일 수 있습니다.")
                 except:
-                    st.info("부위별 데이터를 분석 중입니다...")
+                    st.info("세부 데이터를 분석 중입니다...")
 
 def view_customer_portal():
     render_official_header()
