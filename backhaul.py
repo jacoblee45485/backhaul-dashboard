@@ -134,7 +134,6 @@ if st.sidebar.button("🔄 데이터 강제 새로고침", use_container_width=T
     st.rerun()
 
 st.sidebar.markdown("---")
-# 신규 탭 '수요자(Customer) 포털' 추가
 all_menus = [
     "통합 주문 현황", 
     "수요자(Customer) 포털", 
@@ -154,7 +153,7 @@ for menu in all_menus:
 def render_network_map():
     """
     뉴저지 본사(HQ)와 조지아 물류 허브(Hub)를 중심으로 한 전국 네트워크 시각화
-    가독성을 위해 선 두께와 글씨 크기 상향 조정
+    가독성을 위해 선 두께 상향 및 라벨 폰트 크기 최적화
     """
     if not PLOTLY_AVAILABLE:
         st.warning("지도 라이브러리 사용 불가")
@@ -169,10 +168,9 @@ def render_network_map():
     fig = go.Figure()
     hub_lat, hub_lon = hubs['GA (Logistics Hub)']
     
-    # 연결선 렌더링 (더 진하고 두껍게)
+    # 연결선 렌더링 (진하고 선명하게)
     for name, coord in hubs.items():
         if 'GA' not in name:
-            # 본사 연결선은 더 강조된 색상 사용
             line_color = '#E31837' if 'NJ' in name else '#64748b' 
             fig.add_trace(go.Scattergeo(
                 locationmode='USA-states', 
@@ -183,20 +181,27 @@ def render_network_map():
                 opacity=0.9
             ))
     
-    # 거점 라벨링 (글씨 크기 키우고 대비 상향)
-    names = [f"<b>{n}</b>" for n in hubs.keys()]
+    # 거점 라벨링 (지역명은 크게, 역할 설명은 작게 분리)
+    processed_names = []
+    for n in hubs.keys():
+        # '(' 를 기준으로 지역명과 역할명을 분리
+        state_name = n.split(' (')[0]
+        role_name = n.split(' (')[1].replace(')', '')
+        # Plotly HTML 태그를 사용하여 역할 설명(Headquarters, Hub 등)의 폰트 크기 축소
+        processed_names.append(f"<b>{state_name}</b><br><span style='font-size: 10px; color: #475569;'>{role_name}</span>")
+    
     colors = ['#000000' if 'Headquarters' in n else '#E31837' if 'Hub' in n else '#0F4C81' for n in hubs.keys()]
     
     fig.add_trace(go.Scattergeo(
         locationmode='USA-states', 
         lon=[v[1] for v in hubs.values()], 
         lat=[v[0] for v in hubs.values()], 
-        text=names, 
+        text=processed_names, 
         mode='markers+text', 
         textposition="top center", 
-        textfont=dict(size=14, color="#0f172a"), # 폰트 크기 11 -> 14로 상향
+        textfont=dict(size=14, color="#0f172a"), # 기본 폰트 크기는 14 유지 (굵은 지역명 기준)
         marker=dict(
-            size=16, # 마커 크기 14 -> 16으로 상향
+            size=16, 
             color=colors, 
             line=dict(width=2.5, color='white')
         )
@@ -208,7 +213,7 @@ def render_network_map():
             projection_type='albers usa',
             showland=True,
             landcolor="#f8fafc",
-            subunitcolor="#94a3b8" # 주 경계선 색상 강화
+            subunitcolor="#94a3b8" 
         ), 
         margin=dict(l=0, r=0, t=0, b=0), 
         height=500, 
@@ -268,7 +273,7 @@ def view_customer_portal():
         st.write("### 📢 공동구매 진행 상태")
         st.info("최소 주문 수량(MOQ) 충족 시 조지아 허브에서 일괄 발송됩니다.")
         
-        # 공동구매 시뮬레이션 데이터 (실제 시트 type 기반으로 필터링 가능)
+        # 공동구매 시뮬레이션 데이터 
         gb_items = [
             {"품목": "CJ 비비고 만두 (Pallet)", "지역": "TX", "참여도": 0.85, "잔여": "3 PLT"},
             {"품목": "신라면 컵 (Bulk)", "지역": "FL", "참여도": 0.40, "잔여": "12 PLT"},
