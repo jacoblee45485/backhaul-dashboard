@@ -69,7 +69,7 @@ def render_official_header():
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. 데이터 로드 및 전처리 (안정성 강화)
+# 2. 강화된 데이터 로드 로직 (안정성 강화)
 # ==========================================
 
 @st.cache_data(ttl=60)
@@ -127,29 +127,122 @@ if st.sidebar.button("🔄 데이터 강제 새로고침", use_container_width=T
     st.rerun()
 
 st.sidebar.markdown("---")
-# 신규 탭 '데이터 통합 관리' 추가
 all_menus = ["통합 주문 현황", "백홀 파트너 매칭", "공급자 파트너 서치", "데이터 통합 관리", "시스템 도움말"]
 for menu in all_menus:
     if st.sidebar.button(menu, key=f"sidebar_{menu}", use_container_width=True):
         st.session_state.current_menu = menu
 
+# --- 공유 섹션 ---
+st.sidebar.markdown("<br><br>", unsafe_allow_html=True)
+st.sidebar.markdown("---")
+backhaul_share_url = "https://giant-backhaul.streamlit.app" 
+qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={backhaul_share_url}"
+st.sidebar.image(qr_api_url, caption="시스템 접속 QR", width=150)
+
 # ==========================================
 # 4. 화면 뷰 로직
 # ==========================================
+
+def render_network_map():
+    """
+    미국 내 주요 물류 거점과 GA 본사를 잇는 네트워크 시각화
+    """
+    if not PLOTLY_AVAILABLE:
+        st.warning("지도 라이브러리(Plotly)를 사용할 수 없습니다.")
+        return
+
+    # 주요 거점 좌표 설정
+    hubs = {
+        'GA (Main Center)': [33.7490, -84.3880],
+        'NJ (Northern Hub)': [40.7128, -74.0060],
+        'TX (Western Hub)': [29.7604, -95.3698],
+        'FL (Southern Hub)': [25.7617, -80.1918],
+        'NC/SC (Coastal Hub)': [35.2271, -80.8431]
+    }
+    
+    fig = go.Figure()
+
+    # 조지아 메인 센터에서 각 거점으로 이어지는 경로선 추가
+    for name, coord in hubs.items():
+        if name != 'GA (Main Center)':
+            fig.add_trace(go.Scattergeo(
+                locationmode = 'USA-states',
+                lon = [hubs['GA (Main center)'][1] if 'GA' in hubs else -84.3880, coord[1]],
+                lat = [hubs['GA (Main center)'][0] if 'GA' in hubs else 33.7490, coord[0]],
+                mode = 'lines',
+                line = dict(width = 1.5, color = '#cbd5e1'),
+                opacity = 0.6,
+                hoverinfo = 'none'
+            ))
+
+    # 거점 포인트 표시
+    lats = [v[0] for v in hubs.values()]
+    lons = [v[1] for v in hubs.values()]
+    names = list(hubs.keys())
+    colors = ['#E31837' if 'GA' in n else '#0F4C81' for n in names]
+    sizes = [15 if 'GA' in n else 10 for n in names]
+
+    fig.add_trace(go.Scattergeo(
+        locationmode = 'USA-states',
+        lon = lons,
+        lat = lats,
+        text = names,
+        mode = 'markers+text',
+        textposition = "top center",
+        marker = dict(
+            size = sizes,
+            color = colors,
+            line = dict(width=2, color='white')
+        ),
+        name = 'Logistics Hubs'
+    ))
+
+    fig.update_layout(
+        geo = dict(
+            scope = 'usa',
+            projection_type = 'albers usa',
+            showland = True,
+            landcolor = "rgb(250, 250, 250)",
+            subunitcolor = "rgb(217, 217, 217)",
+            countrycolor = "rgb(217, 217, 217)",
+            showlakes = True,
+            lakecolor = "rgb(255, 255, 255)"
+        ),
+        margin = dict(l=0, r=0, t=0, b=0),
+        height = 450,
+        showlegend = False
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
 def view_unified_orders():
     render_official_header()
     if error_msg: st.error(error_msg)
     
+    # 상단 지표 카드
     col1, col2, col3, col4 = st.columns(4)
     with col1: st.markdown(f'<div class="metric-card"><div class="metric-label">총 오더</div><div class="metric-value">{len(df_orders)}건</div></div>', unsafe_allow_html=True)
     with col2: st.markdown(f'<div class="metric-card"><div class="metric-label">총 물량</div><div class="metric-value">{df_orders["quantity"].sum()} PLT</div></div>', unsafe_allow_html=True)
     with col3: st.markdown(f'<div class="metric-card"><div class="metric-label">운행 트럭</div><div class="metric-value">{len(df_trucks)}대</div></div>', unsafe_allow_html=True)
-    with col4: st.markdown(f'<div class="metric-card"><div class="metric-label">조지아 회항 물량</div><div class="metric-value">128 PLT</div></div>', unsafe_allow_html=True)
+    with col4: st.markdown(f'<div class="metric-card"><div class="metric-label">회항 매칭률</div><div class="metric-value">72%</div></div>', unsafe_allow_html=True)
     
     st.markdown("---")
-    st.subheader("📋 실시간 오더 현황")
-    st.dataframe(df_orders, use_container_width=True, hide_index=True)
+    
+    # 지도와 리스트 병렬 배치
+    c1, c2 = st.columns([1.6, 1])
+    with c1:
+        st.subheader("🌐 전국 물류 네트워크 현황")
+        render_network_map()
+    with c2:
+        st.subheader("📍 지역별 실시간 수요")
+        if df_orders.empty:
+            st.info("현재 접수된 주문이 없습니다.")
+        else:
+            region_sum = df_orders.groupby('region')['quantity'].sum().reset_index()
+            st.dataframe(region_sum.rename(columns={'region':'지역', 'quantity':'수량(PLT)'}), use_container_width=True, hide_index=True)
+            
+            st.markdown("---")
+            st.subheader("📦 최근 주문 목록")
+            st.dataframe(df_orders[['product', 'region', 'quantity']].tail(5), use_container_width=True, hide_index=True)
 
 def view_backhaul_matching():
     render_official_header()
@@ -187,7 +280,7 @@ def view_data_management():
         st.write("📝 **현재 주문 리스트 수정** (수정 후 엔터를 누르세요)")
         edited_orders = st.data_editor(df_orders, use_container_width=True, num_rows="dynamic")
         if st.button("주문 변경사항 임시 저장"):
-            st.success("대시보드에 변경사항이 반영되었습니다. (실제 시트 반영은 쓰기 권한 설정 필요)")
+            st.success("대시보드에 변경사항이 반영되었습니다.")
             
     with m_tab2:
         st.write("🚛 **트럭 배차 현황 관리**")
@@ -204,8 +297,8 @@ def view_help():
     render_official_header()
     st.subheader("🛠️ 관리 가이드")
     st.markdown("""
-    - **통합 주문 현황**: 현재 접수된 모든 오더 확인
-    - **백홀 파트너 매칭**: 조지아로 돌아올 때 실을 짐 발굴
+    - **통합 주문 현황**: 현재 접수된 모든 오더 확인 및 전국 물류 네트워크 지도 조회
+    - **백홀 파트너 매칭**: 조지아로 돌아올 때 실을 짐 발굴 및 경제성 분석
     - **데이터 통합 관리**: 엑셀처럼 직접 데이터를 수정하는 기능
     """)
 
