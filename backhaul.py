@@ -44,7 +44,10 @@ def render_official_header():
             <span style="color: #E31837;">GIANT</span> <span style="color: #000000;">FOODSYSTEM</span>
         </h1>
         <p style="font-size: 1.4rem; font-weight: 700; color: #475569; margin: 15px 0 5px 0;">#1 K-food Distributor in USA</p>
-        <p style="font-size: 1.1rem; font-weight: 500; color: #64748b; margin: 0;">A nationwide food distributor serving for Korean Restaurants, Deli & Salad Bars since 1986</p>
+        <p style="font-size: 1.1rem; font-weight: 500; color: #64748b; margin: 0; line-height: 1.4;">
+            A nationwide food distributor serving for Korean Restaurants,<br>
+            Deli & Salad Bars since 1986
+        </p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -105,7 +108,7 @@ def render_network_map():
                 locationmode = 'USA-states',
                 lon = [hubs['GA (Main)'][1], coord[1]],
                 lat = [hubs['GA (Main)'][0], coord[0]],
-                mode = 'lines',
+                mode = 'markers+lines',
                 line = dict(width = 2, color = '#cbd5e1'),
                 opacity = 0.6,
                 hoverinfo = 'none'
