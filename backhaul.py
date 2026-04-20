@@ -3,6 +3,7 @@ import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 
 # Plotly 라이브러리 안전하게 불러오기 (미국 지도 시각화용)
+# Plotly ñanduti rembipyahu ñongatu porã
 try:
     import plotly.graph_objects as go
     PLOTLY_AVAILABLE = True
@@ -12,6 +13,7 @@ except ImportError:
 # ==========================================
 # 1. 페이지 설정 및 회사 공식 스타일 적용
 # ==========================================
+# 1. Tenda mohenda ha mba'apohára reko
 st.set_page_config(
     page_title="GIANT FOODSYSTEM - 백홀 관리 시스템", 
     page_icon="🚚", 
@@ -20,6 +22,7 @@ st.set_page_config(
 )
 
 # 커스텀 CSS (메트릭 카드 및 레이아웃 스타일)
+# CSS teete (Mba'e rechaukaha ha tenda mohenda)
 st.markdown("""
 <style>
     .block-container { padding-top: 1.5rem; }
@@ -37,6 +40,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # 회사 공식 타이틀과 상세 설명이 포함된 헤더 렌더링 함수
+# Akã guasu rembiapo (Giant Foodsystem mba'e rechaukaha)
 def render_official_header():
     st.markdown("""
     <div style="background-color: #f8fafc; padding: 40px 20px; border-radius: 15px; border: 2px solid #e2e8f0; margin-bottom: 30px; text-align: center;">
@@ -52,12 +56,14 @@ def render_official_header():
     """, unsafe_allow_html=True)
 
 # 구글 시트 연결 설정
+# Google kuatiañe'ẽ ñembojoaju
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
 except Exception as e:
     st.error("라이브러리 연결 오류가 발생했습니다. GitHub의 requirements.txt 설정을 확인해주세요.")
 
 # 데이터 불러오기 함수 (캐시 적용)
+# Marandu mbyaty rembiapo (Cache ndive)
 @st.cache_data(ttl=60)
 def load_data():
     try:
@@ -71,6 +77,7 @@ def load_data():
 df_clients, df_orders, df_trucks = load_data()
 
 # 데이터 기본 구조 보장
+# Marandu reko ñemohenda
 if df_clients.empty:
     df_clients = pd.DataFrame(columns=["client_id", "name", "type"])
 if df_orders.empty:
@@ -79,18 +86,19 @@ if df_trucks.empty:
     df_trucks = pd.DataFrame(columns=["truck_id", "region", "return_day", "capacity", "assigned"])
 
 # 메뉴 상태 관리
+# Tembipuru ñangareko
 if 'current_menu' not in st.session_state:
     st.session_state.current_menu = "통합 주문 현황"
 
 # ==========================================
 # 2. 시각화 요소: 미국 네트워크 지도 (Plotly)
 # ==========================================
+# 2. EE.UU. mapa rechaukaha (Plotly)
 def render_network_map():
     if not PLOTLY_AVAILABLE:
         st.warning("지도 라이브러리(Plotly)가 설치되지 않았습니다. 도움말 메뉴를 확인하여 라이브러리를 설치하세요.")
         return
 
-    # 주요 거점 좌표 설정 (GA, NJ, TX, FL, NC/SC)
     hubs = {
         'GA (Main)': [33.7490, -84.3880],
         'NJ (Hub)': [40.7128, -74.0060],
@@ -101,7 +109,6 @@ def render_network_map():
     
     fig = go.Figure()
 
-    # 경로 연결선
     for name, coord in hubs.items():
         if name != 'GA (Main)':
             fig.add_trace(go.Scattergeo(
@@ -114,7 +121,6 @@ def render_network_map():
                 hoverinfo = 'none'
             ))
 
-    # 주요 거점 포인트 표시
     lats = [v[0] for v in hubs.values()]
     lons = [v[1] for v in hubs.values()]
     names = list(hubs.keys())
@@ -150,6 +156,7 @@ def render_network_map():
 # ==========================================
 # 3. 사이드바 구성
 # ==========================================
+# 3. Yke pegua ñemohenda
 st.sidebar.markdown("""
 <h2 style="margin: 0; font-weight: 900;">
     <span style="color: #E31837;">GIANT</span> <span style="color: #000000;">FOOD</span>
@@ -164,12 +171,14 @@ for menu in all_menus:
         st.session_state.current_menu = menu
 
 # --- [사이드바 하단 공유 섹션] ---
+# Yke pegua pehẽngue (QR ha link)
 st.sidebar.markdown("<br><br>", unsafe_allow_html=True)
 st.sidebar.markdown("---")
 st.sidebar.subheader("🔗 시스템 공유하기")
 
-# 변수명을 backhaul_share_url로 변경하여 의미를 명확히 함
-backhaul_share_url = "https://giant-backhaul.streamlit.app" 
+# [중요] 배포 완료 후 브라우저 주소창의 실제 URL로 이 부분을 바꿔주세요!
+# Tenda mohenda URL tee
+backhaul_share_url = "https://backhaul-dashboard-f8gdhjdyappm23kcj6hli87.streamlit.app/" 
 
 # QR 코드 생성 (QR Server API 사용)
 qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={backhaul_share_url}"
@@ -177,16 +186,16 @@ qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={ba
 st.sidebar.image(qr_api_url, caption="QR 코드를 스캔하세요", use_column_width=False, width=150)
 st.sidebar.markdown(f"**[접속 링크 복사]**")
 st.sidebar.code(backhaul_share_url, language=None)
-st.sidebar.caption("모바일에서도 편리하게 확인 가능합니다.")
+st.sidebar.caption("⚠️ 접속 오류 시 '시스템 도움말'을 확인하세요.")
 
 
 # ==========================================
 # 4. 화면 뷰 1: 통합 주문 현황
 # ==========================================
+# 4. Tenda rechaukaha 1: Marandu mbyaty
 def view_unified_orders():
     render_official_header()
     
-    # 지표 카드 계산
     total_orders = len(df_orders)
     total_pallets = df_orders['quantity'].sum() if not df_orders.empty else 0
     pending_trucks = len(df_trucks[df_trucks['assigned'] == 0])
@@ -234,6 +243,7 @@ def view_unified_orders():
 # ==========================================
 # 5. 화면 뷰 2: 공동구매 전용 관리
 # ==========================================
+# 5. Tenda rechaukaha 2: Ñemumu Joaju
 def view_group_buy():
     render_official_header()
     st.subheader("🤝 공동구매 전용 관리 (Group Buy Progress)")
@@ -263,6 +273,7 @@ def view_group_buy():
 # ==========================================
 # 6. 화면 뷰 3: 트럭 배차 현황
 # ==========================================
+# 6. Tenda rechaukaha 3: Camion ñemohenda
 def view_truck_dispatch():
     render_official_header()
     st.subheader("🚚 트럭 배차 현황 (Backhaul Dispatch)")
@@ -293,50 +304,31 @@ def view_truck_dispatch():
 # ==========================================
 # 7. 화면 뷰 4: 배포 가이드 및 도움말 (Help & Deployment)
 # ==========================================
+# 7. Pytyvõ ha Ñemohenda tape
 def view_help():
     render_official_header()
-    st.subheader("🚀 시스템 배포 단계별 가이드")
+    st.subheader("❓ 큐알코드 접속 오류 해결 방법")
     
-    col1, col2 = st.columns(2)
+    st.error("### 🚫 'You do not have access' 오류 발생 시")
+    st.markdown("""
+    1. **앱 공개 범위 확인:** Streamlit Cloud 대시보드에서 해당 앱의 설정(Settings) 중 **'App sharing'**이 **Public**으로 되어 있는지 확인하세요.
+    2. **URL 일치 여부:** 현재 브라우저 주소창에 떠 있는 주소를 복사하여 코드의 `backhaul_share_url` 변수에 정확히 붙여넣어야 합니다. 
+       (현재 설정된 `giant-backhaul.streamlit.app`은 예시 주소이므로 본인의 주소로 바꿔야 합니다.)
+    3. **저장(Commit) 필수:** 코드를 수정한 후 GitHub에서 반드시 **Commit**을 눌러야 실제 앱에 반영됩니다.
+    """)
     
-    with col1:
-        st.info("### 1단계: GitHub 파일 업데이트")
-        st.markdown("""
-        배포를 위해 GitHub 저장소에 아래 두 파일이 있어야 합니다.
-        
-        1. **`backhaul.py`**: Canvas의 전체 코드를 복사해서 붙여넣기 하세요.
-        2. **`requirements.txt`**: 아래 내용을 그대로 복사해서 새 파일로 만드세요.
-        ```text
-        streamlit
-        pandas
-        st-gsheets-connection
-        plotly
-        ```
-        """)
-        
-        st.success("### 2단계: Streamlit Cloud 가입")
-        st.markdown("""
-        - [share.streamlit.io](https://share.streamlit.io/)에 접속합니다.
-        - GitHub 계정으로 로그인한 뒤, **[Create app]** 버튼을 누릅니다.
-        - 본인의 저장소와 `backhaul.py` 파일을 선택하여 배포합니다.
-        """)
-
-    with col2:
-        st.warning("### 3단계: 구글 시트 연결 (Secrets)")
-        st.markdown("""
-        배포 후 앱 설정(Settings) -> **Secrets** 메뉴에 아래 설정을 넣어야 데이터가 나옵니다.
-        
-        ```toml
-        [connections.gsheets]
-        spreadsheet = "본인의_구글_시트_주소"
-        ```
-        """)
-        
-        st.markdown("---")
-        st.subheader("🔗 시스템 공유 설정")
-        st.write("배포가 완료되면 브라우저 주소창의 링크를 복사하여 사이드바 하단의 `backhaul_share_url` 변수 값에 넣어주세요. 그러면 QR 코드가 활성화됩니다.")
+    st.info("### 🔗 구글 시트 연결 (Secrets)")
+    st.markdown("""
+    1. **Streamlit Settings** -> **Secrets** 클릭
+    2. 아래 형식으로 입력 (URL은 본인 시트 주소로 교체):
+    ```toml
+    [connections.gsheets]
+    spreadsheet = "[https://docs.google.com/spreadsheets/d/본인_시트_아이디/edit#gid=0](https://docs.google.com/spreadsheets/d/본인_시트_아이디/edit#gid=0)"
+    ```
+    """)
 
 # 메인 라우팅
+# Tape mohenda tee
 if st.session_state.current_menu == "통합 주문 현황":
     view_unified_orders()
 elif st.session_state.current_menu == "공동구매 전용 관리":
