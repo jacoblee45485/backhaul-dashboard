@@ -361,8 +361,9 @@ def view_market_price_comparison():
     """, unsafe_allow_html=True)
 
     with st.expander("🛠️ API 통신 테스트 및 리포트 ID 설정 (개발자용)"):
+        st.markdown("**💡 테스트할 리포트 번호(ID) 찾는 방법:**\n1. [🔗 USDA MyMarketNews 공식 포털 (클릭)](https://mymarketnews.ams.usda.gov/)에 접속합니다.\n2. 검색창에 `Pork`, `Beef`, `Chicken` 등의 키워드를 검색합니다.\n3. 검색 결과에 나오는 **4자리 숫자(Report ID)**를 찾아 아래 입력창에 넣고 테스트해 보세요.")
         col_id, col_btn = st.columns([3, 1])
-        manual_report_id = col_id.text_input("통신 테스트용 리포트 ID 입력 (기본: 3646)", value="3646")
+        manual_report_id = col_id.text_input("통신 테스트용 리포트 ID 입력 (예: 2811, 2498, 2752)", value="3646")
         if col_btn.button("API 통신 테스트", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
