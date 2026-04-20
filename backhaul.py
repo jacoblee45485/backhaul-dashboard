@@ -224,8 +224,8 @@ for menu in all_menus:
         st.session_state.current_menu = menu
 
 st.sidebar.markdown("---")
-# Live/Demo 전환 토글 추가
-use_live_api = st.sidebar.toggle("🛰️ 실시간 API 연동 모드", value=False)
+# Live/Demo 전환 토글 기본값을 True로 변경하여 사용자가 즉각적으로 API 연동을 시도하도록 함
+use_live_api = st.sidebar.toggle("🛰️ 실시간 API 연동 모드", value=True)
 st.sidebar.markdown("---")
 
 app_url = "https://giant-backhaul.streamlit.app" 
@@ -289,6 +289,7 @@ def view_market_price_comparison():
         ]
         df_price = pd.DataFrame(demo_prices)
         update_status = "데모 모드 (안정성 우선)"
+        st.info("💡 현재 데모 데이터가 표시되고 있습니다. 실제 데이터를 연동하려면 좌측 사이드바의 **[🛰️ 실시간 API 연동 모드]**를 켜주세요.")
 
     # 상태 표시
     status_color = "#166534" if "성공" in update_status else "#9a3412" if "실패" in update_status else "#475569"
