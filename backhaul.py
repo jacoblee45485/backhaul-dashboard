@@ -152,6 +152,10 @@ for menu in all_menus:
 # ==========================================
 
 def render_network_map():
+    """
+    뉴저지 본사(HQ)와 조지아 물류 허브(Hub)를 중심으로 한 전국 네트워크 시각화
+    가독성을 위해 선 두께와 글씨 크기 상향 조정
+    """
     if not PLOTLY_AVAILABLE:
         st.warning("지도 라이브러리 사용 불가")
         return
@@ -164,15 +168,52 @@ def render_network_map():
     }
     fig = go.Figure()
     hub_lat, hub_lon = hubs['GA (Logistics Hub)']
+    
+    # 연결선 렌더링 (더 진하고 두껍게)
     for name, coord in hubs.items():
         if 'GA' not in name:
-            fig.add_trace(go.Scattergeo(locationmode='USA-states', lon=[hub_lon, coord[1]], lat=[hub_lat, coord[0]], mode='lines', line=dict(width=2, color='#E31837' if 'NJ' in name else '#cbd5e1'), opacity=0.6))
+            # 본사 연결선은 더 강조된 색상 사용
+            line_color = '#E31837' if 'NJ' in name else '#64748b' 
+            fig.add_trace(go.Scattergeo(
+                locationmode='USA-states', 
+                lon=[hub_lon, coord[1]], 
+                lat=[hub_lat, coord[0]], 
+                mode='lines', 
+                line=dict(width=3.5, color=line_color), 
+                opacity=0.9
+            ))
     
+    # 거점 라벨링 (글씨 크기 키우고 대비 상향)
     names = [f"<b>{n}</b>" for n in hubs.keys()]
     colors = ['#000000' if 'Headquarters' in n else '#E31837' if 'Hub' in n else '#0F4C81' for n in hubs.keys()]
     
-    fig.add_trace(go.Scattergeo(locationmode='USA-states', lon=[v[1] for v in hubs.values()], lat=[v[0] for v in hubs.values()], text=names, mode='markers+text', textposition="top center", textfont=dict(size=11), marker=dict(size=14, color=colors, line=dict(width=2, color='white'))))
-    fig.update_layout(geo=dict(scope='usa', projection_type='albers usa'), margin=dict(l=0, r=0, t=0, b=0), height=450, showlegend=False)
+    fig.add_trace(go.Scattergeo(
+        locationmode='USA-states', 
+        lon=[v[1] for v in hubs.values()], 
+        lat=[v[0] for v in hubs.values()], 
+        text=names, 
+        mode='markers+text', 
+        textposition="top center", 
+        textfont=dict(size=14, color="#0f172a"), # 폰트 크기 11 -> 14로 상향
+        marker=dict(
+            size=16, # 마커 크기 14 -> 16으로 상향
+            color=colors, 
+            line=dict(width=2.5, color='white')
+        )
+    ))
+    
+    fig.update_layout(
+        geo=dict(
+            scope='usa', 
+            projection_type='albers usa',
+            showland=True,
+            landcolor="#f8fafc",
+            subunitcolor="#94a3b8" # 주 경계선 색상 강화
+        ), 
+        margin=dict(l=0, r=0, t=0, b=0), 
+        height=500, 
+        showlegend=False
+    )
     st.plotly_chart(fig, use_container_width=True)
 
 def view_unified_orders():
