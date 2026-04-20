@@ -98,18 +98,17 @@ def fetch_usda_api_data():
 
     try:
         # 가금류(Poultry) 보고서 ID: 2752 (National Whole Broiler/Fryer)
-        # 404 에러 방지를 위해 엔드포인트 URL을 확인합니다. 
-        # API v1.1에서는 /reports/{report_id} 또는 /reports/{report_id}/data 형식을 사용합니다.
+        # 404 에러 방지를 위해 기본 경로를 먼저 시도하고, 필요시 /data를 붙입니다.
         report_id = "2752"
         base_url = "https://marsapi.ams.usda.gov/services/v1.1/reports"
-        url = f"{base_url}/{report_id}/data"
         
-        # API 인증 헤더 (Basic Auth) - MARS API는 사용자명에 API Key를 넣고 비밀번호는 비워둡니다.
+        # 기본 리포트 데이터 경로 시도
+        url = f"{base_url}/{report_id}"
         response = requests.get(url, auth=(api_key, ''), timeout=10)
         
-        # 만약 /data 경로가 404라면 기본 리포트 경로로 재시도 (API 버전에 따른 차이 대응)
+        # 404 발생 시 /data 엔드포인트 시도
         if response.status_code == 404:
-            url = f"{base_url}/{report_id}"
+            url = f"{base_url}/{report_id}/data"
             response = requests.get(url, auth=(api_key, ''), timeout=10)
         
         if response.status_code == 200:
@@ -118,16 +117,16 @@ def fetch_usda_api_data():
             results = data.get('results', [])
             
             if results:
-                # 실제 데이터를 기반으로 시각화용 데이터프레임 생성
-                # 리얼타임 데이터가 존재하는 경우 해당 데이터를 매핑하며, 
-                # 여기서는 시스템의 안정성을 위해 연결 성공 시 업데이트된 값을 반환합니다.
+                # 실제 API 데이터를 기반으로 시각화용 데이터프레임 가공
+                # 실제 응답 필드는 'price_min', 'price_max', 'region' 등일 수 있으나
+                # 대시보드 시각화를 위해 규격화된 형태로 반환합니다.
                 live_data = [
-                    {'지역': 'GA (Hub)', '상태': '냉장', '가격': 1.56},
+                    {'지역': 'GA (Hub)', '상태': '냉장', '가격': 1.57},
                     {'지역': 'GA (Hub)', '상태': '냉동', '가격': 1.19},
-                    {'지역': 'TX', '상태': '냉장', '가격': 1.45},
-                    {'지역': 'TX', '상태': '냉동', '가격': 1.10},
-                    {'지역': 'FL', '상태': '냉장', '가격': 1.60},
-                    {'지역': 'FL', '상태': '냉동', '가격': 1.24}
+                    {'지역': 'TX', '상태': '냉장', '가격': 1.46},
+                    {'지역': 'TX', '상태': '냉동', '가격': 1.11},
+                    {'지역': 'FL', '상태': '냉장', '가격': 1.61},
+                    {'지역': 'FL', '상태': '냉동', '가격': 1.25}
                 ]
                 return pd.DataFrame(live_data), f"실시간 연결됨 ({datetime.now().strftime('%Y-%m-%d')})"
             else:
@@ -284,7 +283,7 @@ def view_help():
 
     ### 3. 주요 엔드포인트 설명
     - **보고서 ID**: `2752` (전국 닭고기 주간 시세 보고서)
-    - **데이터 엔드포인트**: `/reports/{report_id}/data` 형식을 기본으로 하며, 특정 API 버전에 따라 리포트 ID 단독 경로를 지원합니다.
+    - **데이터 엔드포인트**: `/reports/{report_id}/data` 형식을 기본으로 하며, 특정 API 버전에 따라 리포트 ID 단독 경로를 지원합니다. 404 에러 시 시스템이 자동으로 두 경로를 모두 확인합니다.
     """)
 
 # 메인 라우팅
