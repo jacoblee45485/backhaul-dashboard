@@ -2,101 +2,31 @@ import streamlit as st
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 
-# Plotly 라이브러리 안전하게 불러오기
-try:
-    import plotly.graph_objects as go
-    PLOTLY_AVAILABLE = True
-except ImportError:
-    PLOTLY_AVAILABLE = False
-
 # ==========================================
-# 1. 페이지 설정 및 회사 공식 스타일 적용
+# 1. 페이지 설정 및 초기화 (Page Config & Init)
 # ==========================================
-st.set_page_config(
-    page_title="GIANT FOODSYSTEM - 백홀 관리 시스템", 
-    page_icon="🚚", 
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+st.set_page_config(page_title="통합 백홀 판매 시스템", page_icon="🚚", layout="wide")
 
-# 커스텀 CSS (메트릭 카드 및 레이아웃)
-st.markdown("""
-<style>
-    .block-container { padding-top: 1.5rem; }
-    .metric-card {
-        background-color: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        padding: 15px;
-        text-align: center;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-    .metric-label { font-size: 0.9rem; color: #64748b; font-weight: 600; margin-bottom: 5px; }
-    .metric-value { font-size: 1.8rem; font-weight: 900; color: #0f172a; }
-</style>
-""", unsafe_allow_html=True)
+# 구글 시트 연결 설정 (st-gsheets-connection 사용)
+conn = st.connection("gsheets", type=GSheetsConnection)
 
-# [수정] 지도가 포함된 공식 헤더 렌더링 함수
-def render_official_header():
-    # 미국 지도 SVG (조지아 강조)
-    ga_map_svg = """
-    <svg viewBox="0 0 100 60" width="100" height="60" xmlns="http://www.w3.org/2000/svg">
-        <path d="M10,10 L90,10 L90,50 L10,50 Z" fill="#f1f5f9" />
-        <path d="M15,15 Q30,10 50,15 T85,15 L85,45 Q60,50 30,45 T15,45 Z" fill="#cbd5e1" />
-        <circle cx="72" cy="38" r="6" fill="#E31837" />
-        <text x="72" y="41" font-size="7" font-weight="900" fill="white" text-anchor="middle">GA</text>
-    </svg>
-    """
-    
-    # 미국 지도 SVG (뉴저지 강조)
-    nj_map_svg = """
-    <svg viewBox="0 0 100 60" width="100" height="60" xmlns="http://www.w3.org/2000/svg">
-        <path d="M10,10 L90,10 L90,50 L10,50 Z" fill="#f1f5f9" />
-        <path d="M15,15 Q30,10 50,15 T85,15 L85,45 Q60,50 30,45 T15,45 Z" fill="#cbd5e1" />
-        <circle cx="80" cy="22" r="6" fill="#E31837" />
-        <text x="80" y="25" font-size="7" font-weight="900" fill="white" text-anchor="middle">NJ</text>
-    </svg>
-    """
-
-    st.markdown(f"""
-    <div style="background-color: #f8fafc; padding: 20px 30px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between;">
-        <div style="text-align: center; width: 140px;">
-            {ga_map_svg}
-            <div style="font-size: 0.75rem; font-weight: 800; color: #0f172a; margin-top: 5px;">GEORGIA (GA)</div>
-        </div>
-        <div style="text-align: center; flex-grow: 1;">
-            <h1 style="margin: 0; font-size: 3.2rem; font-weight: 900; letter-spacing: -1px; line-height: 1;">
-                <span style="color: #E31837;">GIANT</span> <span style="color: #000000;">FOODSYSTEM</span>
-            </h1>
-            <p style="font-size: 1.1rem; font-weight: 600; color: #475569; margin: 10px 0 0 0;">#1 K-food Distributor in USA</p>
-        </div>
-        <div style="text-align: center; width: 140px;">
-            {nj_map_svg}
-            <div style="font-size: 0.75rem; font-weight: 800; color: #0f172a; margin-top: 5px;">NEW JERSEY (NJ)</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-# 구글 시트 연결 설정
-try:
-    conn = st.connection("gsheets", type=GSheetsConnection)
-except Exception as e:
-    st.error("라이브러리 연결 오류가 발생했습니다. GitHub의 requirements.txt 설정을 확인해주세요.")
-
-# 데이터 불러오기 함수 (캐시 적용)
-@st.cache_data(ttl=60)
+# 데이터 불러오기 함수 (캐시 적용으로 성능 최적화)
+@st.cache_data(ttl=60) # 60초 동안 데이터 유지 후 갱신
 def load_data():
     try:
+        # 각 워크시트에서 데이터 읽기
         clients = conn.read(worksheet="Clients")
         orders = conn.read(worksheet="Orders")
         trucks = conn.read(worksheet="Trucks")
         return clients, orders, trucks
-    except Exception:
+    except Exception as e:
+        # 시트가 없거나 연결 오류 시 빈 데이터프레임 반환
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
+# 데이터 로드 실행
 df_clients, df_orders, df_trucks = load_data()
 
-# 데이터 기본 구조 보장
+# 데이터 유효성 검사 및 기본 컬럼 보장
 if df_clients.empty:
     df_clients = pd.DataFrame(columns=["client_id", "name", "type"])
 if df_orders.empty:
@@ -107,223 +37,196 @@ if df_trucks.empty:
 # 메뉴 상태 관리
 if 'current_menu' not in st.session_state:
     st.session_state.current_menu = "통합 주문 현황"
+if 'pinned_menus' not in st.session_state:
+    st.session_state.pinned_menus = ["통합 주문 현황"]
 
 # ==========================================
-# 2. 시각화 요소: 미국 네트워크 지도 (Plotly)
+# 2. 사이드바 로직 (Sidebar & Pin Feature)
 # ==========================================
-def render_network_map():
-    if not PLOTLY_AVAILABLE:
-        st.warning("지도 라이브러리(Plotly)가 설치되지 않았습니다. 도움말 메뉴를 확인하여 라이브러리를 설치하세요.")
-        return
+def toggle_pin(menu_name):
+    if menu_name in st.session_state.pinned_menus:
+        st.session_state.pinned_menus.remove(menu_name)
+    else:
+        st.session_state.pinned_menus.append(menu_name)
 
-    # 주요 거점 좌표 설정
-    hubs = {
-        'GA (Main)': [33.7490, -84.3880],
-        'NJ (Hub)': [40.7128, -74.0060],
-        'TX (Region)': [29.7604, -95.3698],
-        'FL (Region)': [25.7617, -80.1918],
-        'NC/SC (Region)': [35.2271, -80.8431]
-    }
-    
-    fig = go.Figure()
-
-    # 경로 연결선 (GA 중심으로)
-    for name, coord in hubs.items():
-        if name != 'GA (Main)':
-            fig.add_trace(go.Scattergeo(
-                locationmode = 'USA-states',
-                lon = [hubs['GA (Main)'][1], coord[1]],
-                lat = [hubs['GA (Main)'][0], coord[0]],
-                mode = 'lines',
-                line = dict(width = 2, color = '#cbd5e1'),
-                opacity = 0.6,
-                hoverinfo = 'none'
-            ))
-
-    # 거점 포인트
-    lats = [v[0] for v in hubs.values()]
-    lons = [v[1] for v in hubs.values()]
-    names = list(hubs.keys())
-    colors = ['#E31837' if 'GA' in n or 'NJ' in n else '#0F4C81' for n in names]
-    sizes = [15 if 'GA' in n or 'NJ' in n else 10 for n in names]
-
-    fig.add_trace(go.Scattergeo(
-        locationmode = 'USA-states',
-        lon = lons,
-        lat = lats,
-        text = names,
-        mode = 'markers+text',
-        textposition = "top center",
-        marker = dict(size = sizes, color = colors, line = dict(width=2, color='white')),
-        name = 'Network Hubs'
-    ))
-
-    fig.update_layout(
-        geo = dict(
-            scope = 'usa',
-            projection_type = 'albers usa',
-            showland = True,
-            landcolor = "rgb(250, 250, 250)",
-            subunitcolor = "rgb(217, 217, 217)",
-            countrycolor = "rgb(217, 217, 217)",
-        ),
-        margin = dict(l=0, r=0, t=0, b=0),
-        height = 350,
-        showlegend = False
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-# ==========================================
-# 3. 사이드바 구성
-# ==========================================
-st.sidebar.markdown("""
-<h2 style="margin: 0; font-weight: 900;">
-    <span style="color: #E31837;">GIANT</span> <span style="color: #000000;">FOOD</span>
-</h2>
-<p style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Backhaul Management System</p>
-""", unsafe_allow_html=True)
-st.sidebar.markdown("---")
+def change_menu(menu_name):
+    st.session_state.current_menu = menu_name
 
 all_menus = ["통합 주문 현황", "공동구매 전용 관리", "트럭 배차 현황", "시스템 도움말"]
+
+st.sidebar.title("🚚 Backhaul Hub")
+st.sidebar.markdown("---")
+
+# 고정된 메뉴 (Pinned Menus)
+st.sidebar.subheader("📌 고정된 메뉴")
 for menu in all_menus:
-    if st.sidebar.button(menu, use_container_width=True):
-        st.session_state.current_menu = menu
+    if menu in st.session_state.pinned_menus:
+        col1, col2 = st.sidebar.columns([4, 1])
+        with col1:
+            if st.button(menu, key=f"pinned_{menu}", use_container_width=True):
+                change_menu(menu)
+        with col2:
+            st.button("⭐", key=f"unpin_{menu}", on_click=toggle_pin, args=(menu,))
+
+st.sidebar.markdown("---")
+
+# 전체 메뉴 (All Menus)
+st.sidebar.subheader("📂 전체 메뉴")
+for menu in all_menus:
+    if menu not in st.session_state.pinned_menus:
+        col1, col2 = st.sidebar.columns([4, 1])
+        with col1:
+            if st.button(menu, key=f"all_{menu}", use_container_width=True):
+                change_menu(menu)
+        with col2:
+            st.button("☆", key=f"pin_{menu}", on_click=toggle_pin, args=(menu,))
 
 # ==========================================
-# 4. 화면 뷰 1: 통합 주문 현황
+# 3. 화면 뷰 1: 통합 주문 현황 (수요 집계)
 # ==========================================
 def view_unified_orders():
-    render_official_header()
+    st.title("📊 통합 주문 현황 (수요 집계)")
+    st.write("구글 시트의 주문 데이터를 기반으로 실시간 수요를 집계합니다.")
     
-    # [수정] 주요 지표 요약
-    total_orders = len(df_orders)
-    total_pallets = df_orders['quantity'].sum() if not df_orders.empty else 0
-    pending_trucks = len(df_trucks[df_trucks['assigned'] == 0])
-    match_rate = int((1 - pending_trucks/max(len(df_trucks),1))*100)
-    
-    m1, m2, m3, m4 = st.columns(4)
-    with m1:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">총 주문 건수</div><div class="metric-value">{total_orders}건</div></div>', unsafe_allow_html=True)
-    with m2:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">전체 수요 용량</div><div class="metric-value">{total_pallets} PLT</div></div>', unsafe_allow_html=True)
-    with m3:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">배차 대기 트럭</div><div class="metric-value">{pending_trucks}대</div></div>', unsafe_allow_html=True)
-    with m4:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">백홀 매칭률</div><div class="metric-value">{match_rate}%</div></div>', unsafe_allow_html=True)
+    if df_orders.empty:
+        st.warning("Orders 시트에 데이터가 없습니다. 구글 시트를 확인해 주세요.")
+        return
 
-    st.markdown("---")
+    # 데이터 병합 (Orders + Clients)
+    try:
+        df_merged = pd.merge(df_orders, df_clients, on="client_id", how="left")
+    except KeyError:
+        st.error("데이터 컬럼명이 일치하지 않습니다. (client_id 확인 필요)")
+        return
     
-    col_map, col_list = st.columns([1.5, 1])
-    
-    with col_map:
-        st.subheader("🌐 Logistics Network (GA - NJ Hub)")
-        render_network_map()
-    
-    with col_list:
-        st.subheader("📍 지역별 수요 집계")
-        if df_orders.empty:
-            st.info("접수된 주문이 없습니다.")
-        else:
-            df_merged = pd.merge(df_orders, df_clients, on="client_id", how="left")
-            summary = df_merged.groupby('region')['quantity'].sum().reset_index()
-            st.dataframe(summary.rename(columns={'region':'지역', 'quantity':'총 수량(PLT)'}), use_container_width=True, hide_index=True)
-
-    # 하단 상세 정보
-    st.markdown("---")
+    # 지역별 섹션 생성
     regions = ["TX", "FL", "NC_SC"]
     for region in regions:
-        with st.expander(f"📦 {region} 지역 상세 오더 내역", expanded=(region=="TX")):
-            region_data = df_merged[df_merged['region'] == region] if not df_orders.empty else pd.DataFrame()
+        with st.expander(f"📍 {region} 지역 수요 상세", expanded=True):
+            region_data = df_merged[df_merged['region'] == region]
             if region_data.empty:
-                st.write("내역 없음")
-            else:
-                st.table(region_data[['name', 'product', 'quantity']].rename(columns={'name':'업체명', 'product':'품목', 'quantity':'수량'}))
+                st.write("해당 지역의 주문이 없습니다.")
+                continue
+                
+            products = region_data['product'].unique()
+            for product in products:
+                prod_data = region_data[region_data['product'] == product]
+                w_qty = prod_data[prod_data['type'] == 'Wholesale']['quantity'].sum()
+                gb_qty = prod_data[prod_data['type'] == 'GroupBuy']['quantity'].sum()
+                total_qty = w_qty + gb_qty
+                
+                st.info(f"**{product}**: 총 {total_qty} 파렛트 (홀세일: {w_qty} / 공동구매: {gb_qty})")
+                st.table(prod_data[['name', 'type', 'quantity']].rename(
+                    columns={'name': '판매처명', 'type': '구분', 'quantity': '수량'}
+                ))
 
 # ==========================================
-# 5. 화면 뷰 2: 공동구매 전용 관리
+# 4. 화면 뷰 2: 공동구매 전용 관리 (Progress Bar)
 # ==========================================
 def view_group_buy():
-    render_official_header()
-    st.subheader("🤝 공동구매 전용 관리 (Group Buy Progress)")
+    st.title("🤝 공동구매 전용 관리")
+    st.write("공동구매 멤버들의 주문 합계가 트럭 목표치(20파렛트)에 도달했는지 확인합니다.")
     
+    if df_orders.empty:
+        st.info("진행 중인 공동구매 오더가 없습니다.")
+        return
+
     df_merged = pd.merge(df_orders, df_clients, on="client_id", how="left")
     gb_data = df_merged[df_merged['type'] == 'GroupBuy']
     
     if gb_data.empty:
-        st.info("현재 진행 중인 공동구매가 없습니다.")
+        st.info("공동구매 멤버의 주문이 아직 없습니다.")
         return
 
     deals = gb_data.groupby(['region', 'product'])['quantity'].sum().reset_index()
-    TARGET = 20 
+    TARGET_CAPACITY = 20 # 트럭 한 대분 기준
     
     cols = st.columns(2)
     for i, (_, row) in enumerate(deals.iterrows()):
         with cols[i % 2]:
-            st.markdown(f"#### {row['region']} - {row['product']}")
-            progress = min(row['quantity'] / TARGET, 1.0)
-            st.progress(progress)
-            st.write(f"모집 현황: **{row['quantity']}** / {TARGET} PLT ({int(progress*100)}%)")
+            st.subheader(f"🏷️ {row['region']} {row['product']}")
+            progress_val = min(row['quantity'] / TARGET_CAPACITY, 1.0)
+            st.progress(progress_val)
+            st.write(f"모집 현황: **{row['quantity']}** / {TARGET_CAPACITY} 파렛트 ({int(progress_val * 100)}%)")
+            
+            # 해당 딜 참여 멤버 리스트
+            details = gb_data[(gb_data['region'] == row['region']) & (gb_data['product'] == row['product'])]
+            st.caption(f"참여 업체: {', '.join(details['name'].tolist())}")
 
 # ==========================================
-# 6. 화면 뷰 3: 트럭 배차 현황
+# 5. 화면 뷰 3: 트럭 배차 현황 (Backhaul Matching)
 # ==========================================
 def view_truck_dispatch():
-    render_official_header()
-    st.subheader("🚚 트럭 배차 현황 (Backhaul Dispatch)")
+    st.title("🚚 트럭 배차 현황 (백홀 매칭)")
+    st.write("조지아로 복귀하는 트럭 스케줄에 집계된 수요를 매칭합니다.")
     
+    if df_trucks.empty:
+        st.warning("Trucks 시트에 트럭 데이터가 없습니다.")
+        return
+
     days_map = {"화": "NC_SC", "수": "TX", "금": "FL"}
     cols = st.columns(3)
     
     for i, (day, region) in enumerate(days_map.items()):
         with cols[i]:
-            if day == "화": st.error(f"### {day}요일 ({region})")
-            elif day == "수": st.warning(f"### {day}요일 ({region})")
-            else: st.success(f"### {day}요일 ({region})")
-            
+            st.markdown(f"### {day}요일 복귀 ({region})")
             day_trucks = df_trucks[df_trucks['return_day'] == day]
             
+            if day_trucks.empty:
+                st.caption("해당 요일 운행 트럭 없음")
+                continue
+                
             for _, truck in day_trucks.iterrows():
-                try:
-                    is_assigned = int(truck['assigned']) == 1
-                except:
-                    is_assigned = False
-                status = "✅ 상차 완료" if is_assigned else "🔲 배차 대기"
-                st.markdown(f"**{truck['truck_id']}** ({truck['capacity']} PLT)")
-                st.caption(status)
-                if not is_assigned:
-                    st.button(f"배차 확정", key=f"d_btn_{truck['truck_id']}")
+                # 배차 상태에 따른 카드 디자인
+                is_assigned = truck['assigned'] == 1
+                color = "green" if is_assigned else "red"
+                status_text = "상차 완료" if is_assigned else "빈 차 (배차 필요)"
+                
+                with st.container():
+                    st.markdown(f"""
+                    <div style="border:1px solid {color}; border-radius:10px; padding:15px; margin-bottom:10px;">
+                        <h4 style="margin:0;">{truck['truck_id']}</h4>
+                        <p style="margin:0; font-size:14px;">상태: <span style="color:{color}; font-weight:bold;">{status_text}</span></p>
+                        <p style="margin:0; font-size:12px;">가용 용량: {truck['capacity']} 파렛트</p>
+                    </div>
+                    """, unsafe_allow_name=True)
+                    
+                    if not is_assigned:
+                        if st.button(f"{truck['truck_id']} 배차 확정", key=f"btn_{truck['truck_id']}"):
+                            st.success(f"{truck['truck_id']} 배차 처리됨 (구글 시트 업데이트 기능 연동 예정)")
 
 # ==========================================
-# 7. 화면 뷰 4: 시스템 도움말
+# 6. 화면 뷰 4: 시스템 도움말 (Help & Secrets)
 # ==========================================
 def view_help():
-    render_official_header()
-    st.subheader("❓ 시스템 관리 및 연동 가이드")
-    
-    st.error("### 🚨 배포 오류 해결법 (ModuleNotFoundError)")
+    st.title("❓ 시스템 도움말 및 연동 가이드")
     st.markdown("""
-    지도 기능을 위해 추가된 `plotly` 라이브러리를 서버가 인식해야 합니다. 
-    GitHub의 **requirements.txt** 파일을 아래 내용으로 완전히 덮어쓰기 하세요.
-    
-    ```text
-    streamlit
-    pandas
-    st-gsheets-connection
-    plotly
-    ```
-    """)
-    
-    st.info("### 🔗 구글 시트 연결 (Secrets)")
-    st.markdown("""
-    1. **Streamlit Settings** -> **Secrets** 클릭
-    2. 아래 형식으로 입력:
+    ### 🔗 구글 스프레드시트 실시간 연동 방법
+    본 앱은 구글 시트의 데이터를 직접 읽어옵니다. 아래 단계를 따라 설정을 완료하세요.
+
+    **1. 구글 시트 공유 설정**
+    - 구글 시트 우측 상단 **[공유]** 클릭
+    - '링크가 있는 모든 사용자'가 **'편집자'** 권한을 갖도록 변경
+
+    **2. Streamlit Secrets 설정**
+    - [Streamlit Cloud](https://share.streamlit.io/) 대시보드 접속
+    - 본인 앱 우측의 `...` 아이콘 -> **Settings** 클릭
+    - 좌측 메뉴에서 **Secrets** 선택
+    - 아래 내용을 복사해서 붙여넣으세요 (URL은 본인 시트 주소로 수정):
     ```toml
     [connections.gsheets]
     spreadsheet = "[https://docs.google.com/spreadsheets/d/본인_시트_아이디/edit#gid=0](https://docs.google.com/spreadsheets/d/본인_시트_아이디/edit#gid=0)"
     ```
+    - **Save** 버튼 클릭
+
+    **3. 파일 및 브랜치 설정**
+    - **Main file path:** `backhaul.py` (현재 대표님의 파일 이름)
+    - **Branch:** `main`
     """)
 
-# 메인 라우팅
+# ==========================================
+# 7. 메인 라우팅 (Main Routing)
+# ==========================================
 if st.session_state.current_menu == "통합 주문 현황":
     view_unified_orders()
 elif st.session_state.current_menu == "공동구매 전용 관리":
