@@ -346,35 +346,66 @@ def view_market_price_comparison():
 
     st.markdown("---")
     
-    # === 부위별 데이터 필터링 기능 추가 ===
-    part_options = df_price['부위'].unique() if not df_price.empty and '부위' in df_price.columns else ["통닭(Whole)"]
-    selected_part = st.selectbox("📌 조회할 닭고기 부위 선택", options=part_options)
+    # === 부위별 비교를 위한 탭 구조 추가 ===
+    tab1, tab2 = st.tabs(["🗺️ 지역별 시세 비교 (부위 선택)", "🍗 부위별 단가 비교 (지역 선택)"])
     
-    filtered_df = df_price[df_price['부위'] == selected_part] if not df_price.empty and '부위' in df_price.columns else df_price
+    with tab1:
+        part_options = df_price['부위'].unique() if not df_price.empty and '부위' in df_price.columns else ["통닭(Whole)"]
+        selected_part = st.selectbox("📌 조회할 닭고기 부위 선택", options=part_options, key="tab1_part")
+        
+        filtered_df = df_price[df_price['부위'] == selected_part] if not df_price.empty and '부위' in df_price.columns else df_price
 
-    col1, col2 = st.columns([2, 1])
-    with col1:
-        if not filtered_df.empty and PLOTLY_AVAILABLE:
-            fig = px.bar(filtered_df, x='지역', y='가격', color='상태', barmode='group',
-                         title=f"리포트 #{manual_report_id} - {selected_part} 지역별 시세 분석",
-                         color_discrete_map={'냉장': '#E31837', '냉동': '#0F4C81'})
-            fig.update_layout(yaxis_title="가격 ($/LB)", xaxis_title="지역", template="plotly_white")
-            st.plotly_chart(fig, use_container_width=True)
-    
-    with col2:
-        st.markdown(f"### 🔍 {selected_part} 시장 분석 결과")
-        if not filtered_df.empty:
-            try:
-                tx_frozen = filtered_df[(filtered_df['지역']=='TX') & (filtered_df['상태']=='냉동')]['가격'].values[0]
-                tx_ref = filtered_df[(filtered_df['지역']=='TX') & (filtered_df['상태']=='냉장')]['가격'].values[0]
-                ga_ref = filtered_df[(filtered_df['지역']=='GA (Hub)') & (filtered_df['상태']=='냉장')]['가격'].values[0]
-                nj_ref = filtered_df[(filtered_df['지역']=='NJ (HQ)') & (filtered_df['상태']=='냉장')]['가격'].values[0]
-                
-                st.success(f"**Texas 및 New Jersey 백홀 전략**\n\n"
-                           f"❄️ **냉동 시세**: TX 지역이 **${tx_frozen}**으로 가장 낮습니다. TX 지역 납품 후 복귀 차량에 냉동육을 상차하면 조지아 허브 재고 보충 물류비를 크게 절감할 수 있습니다.\n\n"
-                           f"🧊 **냉장 시세**: NJ(본사) 지역이 **${nj_ref}**로 가장 높고, TX는 **${tx_ref}**, GA는 **${ga_ref}**입니다. 단가가 저렴한 남부(TX/GA)에서 물량을 확보하여 NJ 본사로 올려보내는(Inbound) 매칭 시 시세 차익을 극대화할 수 있습니다.")
-            except Exception as e:
-                st.info("데이터를 분석 중입니다...")
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            if not filtered_df.empty and PLOTLY_AVAILABLE:
+                fig = px.bar(filtered_df, x='지역', y='가격', color='상태', barmode='group',
+                             title=f"리포트 #{manual_report_id} - {selected_part} 지역별 시세 분석",
+                             color_discrete_map={'냉장': '#E31837', '냉동': '#0F4C81'})
+                fig.update_layout(yaxis_title="가격 ($/LB)", xaxis_title="지역", template="plotly_white")
+                st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            st.markdown(f"### 🔍 {selected_part} 지역 간 전략")
+            if not filtered_df.empty:
+                try:
+                    tx_frozen = filtered_df[(filtered_df['지역']=='TX') & (filtered_df['상태']=='냉동')]['가격'].values[0]
+                    tx_ref = filtered_df[(filtered_df['지역']=='TX') & (filtered_df['상태']=='냉장')]['가격'].values[0]
+                    ga_ref = filtered_df[(filtered_df['지역']=='GA (Hub)') & (filtered_df['상태']=='냉장')]['가격'].values[0]
+                    nj_ref = filtered_df[(filtered_df['지역']=='NJ (HQ)') & (filtered_df['상태']=='냉장')]['가격'].values[0]
+                    
+                    st.success(f"**Texas 및 New Jersey 백홀 전략**\n\n"
+                               f"❄️ **냉동 시세**: TX 지역이 **${tx_frozen}**으로 가장 낮습니다. TX 지역 납품 후 복귀 차량에 냉동육을 상차하면 조지아 허브 재고 보충 물류비를 크게 절감할 수 있습니다.\n\n"
+                               f"🧊 **냉장 시세**: NJ(본사) 지역이 **${nj_ref}**로 가장 높고, TX는 **${tx_ref}**, GA는 **${ga_ref}**입니다. 단가가 저렴한 남부(TX/GA)에서 신선 물량을 확보하여 NJ 본사로 올려보내는(Inbound) 매칭 시 시세 차익을 극대화할 수 있습니다.")
+                except Exception as e:
+                    st.info("데이터를 분석 중입니다...")
+                    
+    with tab2:
+        region_options = df_price['지역'].unique() if not df_price.empty and '지역' in df_price.columns else ["GA (Hub)"]
+        selected_region = st.selectbox("📌 조회할 기준 지역 선택", options=region_options, key="tab2_region")
+        
+        filtered_df_region = df_price[df_price['지역'] == selected_region] if not df_price.empty and '지역' in df_price.columns else df_price
+
+        col3, col4 = st.columns([2, 1])
+        with col3:
+            if not filtered_df_region.empty and PLOTLY_AVAILABLE:
+                fig2 = px.bar(filtered_df_region, x='부위', y='가격', color='상태', barmode='group',
+                             title=f"{selected_region} 지역 - 부위별 시세 비교",
+                             color_discrete_map={'냉장': '#E31837', '냉동': '#0F4C81'})
+                fig2.update_layout(yaxis_title="가격 ($/LB)", xaxis_title="부위", template="plotly_white")
+                st.plotly_chart(fig2, use_container_width=True)
+        
+        with col4:
+            st.markdown(f"### 🔍 {selected_region} 부위별 차익 분석")
+            if not filtered_df_region.empty and '부위' in filtered_df_region.columns:
+                try:
+                    breast_price = filtered_df_region[(filtered_df_region['부위'].str.contains('가슴살')) & (filtered_df_region['상태']=='냉동')]['가격'].values[0]
+                    thigh_price = filtered_df_region[(filtered_df_region['부위'].str.contains('다리살')) & (filtered_df_region['상태']=='냉동')]['가격'].values[0]
+                    diff = round(breast_price - thigh_price, 2)
+                    st.success(f"**부위별 B2B 프로모션 전략**\n\n"
+                               f"현재 {selected_region} 지역의 냉동 가슴살 단가는 **${breast_price}**이고, 다리살은 **${thigh_price}**입니다.\n\n"
+                               f"두 부위의 단가 차이는 **${diff}/LB**입니다. 가성비가 높은 다리살 위주의 프로모션을 기획하면 주요 식당(Customer) 등 B2B 대량 수요를 효과적으로 견인할 수 있습니다.")
+                except:
+                    st.info("부위별 데이터를 분석 중입니다...")
 
 def view_customer_portal():
     render_official_header()
