@@ -8,7 +8,11 @@ from streamlit_gsheets import GSheetsConnection
 st.set_page_config(page_title="GA GLOBAL LOGISTICS - 백홀 관리 시스템", page_icon="🚚", layout="wide")
 
 # 구글 시트 연결 설정
-conn = st.connection("gsheets", type=GSheetsConnection)
+# ModuleNotFoundError가 발생하면 requirements.txt에 st-gsheets-connection이 있는지 확인하세요.
+try:
+    conn = st.connection("gsheets", type=GSheetsConnection)
+except Exception as e:
+    st.error("라이브러리 연결 오류가 발생했습니다. requirements.txt 설정을 확인해주세요.")
 
 # 데이터 불러오기 함수
 @st.cache_data(ttl=60)
@@ -89,13 +93,13 @@ def view_unified_orders():
     st.write("실시간 수요를 집계하여 트럭 매칭 준비를 진행합니다.")
     
     if df_orders.empty:
-        st.warning("데이터를 불러오는 중이거나 구글 시트 연결 설정이 필요합니다.")
+        st.warning("데이터를 불러오는 중이거나 구글 시트 연결 설정이 필요합니다. '시스템 도움말' 메뉴를 확인하세요.")
         return
 
     try:
         df_merged = pd.merge(df_orders, df_clients, on="client_id", how="left")
     except Exception:
-        st.error("데이터 매칭 오류 (client_id를 확인하세요)")
+        st.error("데이터 매칭 오류 (구글 시트의 client_id 열을 확인하세요)")
         return
     
     regions = ["TX", "FL", "NC_SC"]
@@ -168,22 +172,30 @@ def view_truck_dispatch():
 # ==========================================
 def view_help():
     st.title("❓ 시스템 관리 및 연동 가이드")
+    
+    st.error("### 🚨 ModuleNotFoundError 해결법 (필독)")
     st.markdown("""
-    ### 🚨 ModuleNotFoundError 발생 시 해결법
-    에러 메시지에 `streamlit_gsheets`가 언급된다면, GitHub의 **requirements.txt** 파일에 아래 3줄이 정확히 있는지 확인하세요.
+    앱 실행 중 'ModuleNotFoundError: No module named streamlit_gsheets' 오류가 뜬다면 아래를 확인하세요.
+    
+    **1. GitHub의 requirements.txt 파일 수정**
+    - 아래 내용을 그대로 복사해서 저장하세요 (한 줄이라도 빠지면 안 됩니다).
     ```text
     streamlit
     pandas
     st-gsheets-connection
     ```
+    - 수정 후 **Commit changes**를 누르면 스트림릿이 알아서 재설치를 시작합니다 (1~2분 소요).
+    """)
 
-    ### 🔗 구글 시트 연결 (Secrets 설정)
-    1. **Streamlit Cloud Dashboard** -> **Settings** -> **Secrets**
-    2. 아래 내용 입력 (URL은 본인 시트 주소로 교체):
+    st.info("### 🔗 구글 시트 연결 (Secrets 설정)")
+    st.markdown("""
+    1. **Streamlit Cloud Dashboard** -> 본인 앱의 **Settings** -> **Secrets** 클릭
+    2. 아래 내용을 입력 (URL은 본인 시트 주소로 교체):
     ```toml
     [connections.gsheets]
     spreadsheet = "[https://docs.google.com/spreadsheets/d/본인_시트_아이디/edit#gid=0](https://docs.google.com/spreadsheets/d/본인_시트_아이디/edit#gid=0)"
     ```
+    3. 시트 상단 **[공유]** 버튼을 눌러 '링크가 있는 모든 사용자'가 '편집자' 권한을 갖도록 설정하세요.
     """)
 
 # 메인 라우팅
