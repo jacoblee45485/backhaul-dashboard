@@ -36,14 +36,15 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# [수정] 회사 공식 타이틀만 포함된 심플한 헤더 렌더링 함수
+# [수정] 회사 공식 타이틀과 상세 설명이 포함된 헤더 렌더링 함수
 def render_official_header():
     st.markdown("""
     <div style="background-color: #f8fafc; padding: 40px 20px; border-radius: 15px; border: 2px solid #e2e8f0; margin-bottom: 30px; text-align: center;">
         <h1 style="margin: 0; font-size: 4rem; font-weight: 900; letter-spacing: -2px; line-height: 1.1;">
             <span style="color: #E31837;">GIANT</span> <span style="color: #000000;">FOODSYSTEM</span>
         </h1>
-        <p style="font-size: 1.3rem; font-weight: 600; color: #475569; margin: 15px 0 0 0;">#1 K-food Distributor in USA</p>
+        <p style="font-size: 1.4rem; font-weight: 700; color: #475569; margin: 15px 0 5px 0;">#1 K-food Distributor in USA</p>
+        <p style="font-size: 1.1rem; font-weight: 500; color: #64748b; margin: 0;">A nationwide food distributor serving for Korean Restaurants, Deli & Salad Bars since 1986</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -156,7 +157,7 @@ st.sidebar.markdown("---")
 
 all_menus = ["통합 주문 현황", "공동구매 전용 관리", "트럭 배차 현황", "시스템 도움말"]
 for menu in all_menus:
-    if st.sidebar.button(menu, use_container_width=True):
+    if st.sidebar.button(menu, key=f"sidebar_{menu}", use_container_width=True):
         st.session_state.current_menu = menu
 
 # ==========================================
