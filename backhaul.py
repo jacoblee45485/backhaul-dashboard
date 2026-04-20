@@ -19,50 +19,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# [스타일] 트럭 대시보드 스타일 및 지도/카드 커스텀 CSS
+# 커스텀 CSS (메트릭 카드 및 레이아웃)
 st.markdown("""
 <style>
     .block-container { padding-top: 1.5rem; }
-    
-    /* 상단 타이틀 박스 디자인 */
-    .header-wrapper {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        background-color: #f8fafc;
-        padding: 15px 30px;
-        border-radius: 12px;
-        border: 1px solid #e2e8f0;
-        margin-bottom: 20px;
-    }
-    
-    .header-logo-section {
-        text-align: center;
-        flex-grow: 1;
-    }
-    
-    .logo-text-giant { color: #E31837; font-weight: 900; font-size: 2.8rem; letter-spacing: -1px; margin: 0; }
-    .logo-text-food { color: #000000; font-weight: 900; font-size: 2.8rem; letter-spacing: -1px; margin: 0; }
-    .tagline { font-size: 1rem; font-weight: 600; color: #475569; margin-top: 5px; }
-
-    /* 지도 아이콘 스타일 */
-    .map-icon-container {
-        width: 100px;
-        height: 70px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .map-label {
-        font-size: 0.75rem;
-        font-weight: 800;
-        margin-top: 4px;
-        color: #0f172a;
-    }
-
-    /* 지표 카드 스타일 */
     .metric-card {
         background-color: #ffffff;
         border: 1px solid #e2e8f0;
@@ -71,45 +31,48 @@ st.markdown("""
         text-align: center;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
-    .metric-label { font-size: 0.9rem; color: #64748b; font-weight: 600; }
+    .metric-label { font-size: 0.9rem; color: #64748b; font-weight: 600; margin-bottom: 5px; }
     .metric-value { font-size: 1.8rem; font-weight: 900; color: #0f172a; }
 </style>
 """, unsafe_allow_html=True)
 
-# 지도가 포함된 공식 헤더 렌더링 함수
+# [수정] 지도가 포함된 공식 헤더 렌더링 함수 (Inline Style 적용으로 안정성 확보)
 def render_official_header():
-    # SVG 지도는 조지아(GA)와 뉴저지(NJ) 위치를 점으로 표시
+    # 미국 지도 SVG (조지아 강조)
     ga_map_svg = """
-    <svg viewBox="0 0 100 60" width="80" height="48" xmlns="http://www.w3.org/2000/svg">
-        <path d="M10,10 L90,10 L90,50 L10,50 Z" fill="#e2e8f0" />
+    <svg viewBox="0 0 100 60" width="100" height="60" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10,10 L90,10 L90,50 L10,50 Z" fill="#f1f5f9" />
         <path d="M15,15 Q30,10 50,15 T85,15 L85,45 Q60,50 30,45 T15,45 Z" fill="#cbd5e1" />
-        <circle cx="72" cy="38" r="4" fill="#E31837" />
+        <circle cx="72" cy="38" r="5" fill="#E31837" />
+        <text x="72" y="52" font-size="8" font-weight="bold" fill="#E31837" text-anchor="middle">GA</text>
     </svg>
     """
     
+    # 미국 지도 SVG (뉴저지 강조)
     nj_map_svg = """
-    <svg viewBox="0 0 100 60" width="80" height="48" xmlns="http://www.w3.org/2000/svg">
-        <path d="M10,10 L90,10 L90,50 L10,50 Z" fill="#e2e8f0" />
+    <svg viewBox="0 0 100 60" width="100" height="60" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10,10 L90,10 L90,50 L10,50 Z" fill="#f1f5f9" />
         <path d="M15,15 Q30,10 50,15 T85,15 L85,45 Q60,50 30,45 T15,45 Z" fill="#cbd5e1" />
-        <circle cx="80" cy="22" r="4" fill="#E31837" />
+        <circle cx="80" cy="22" r="5" fill="#E31837" />
+        <text x="80" y="15" font-size="8" font-weight="bold" fill="#E31837" text-anchor="middle">NJ</text>
     </svg>
     """
 
     st.markdown(f"""
-    <div class="header-wrapper">
-        <div class="map-icon-container">
+    <div style="background-color: #f8fafc; padding: 20px 30px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between;">
+        <div style="text-align: center; width: 120px;">
             {ga_map_svg}
-            <div class="map-label">GEORGIA (GA)</div>
+            <div style="font-size: 0.75rem; font-weight: 800; color: #0f172a; margin-top: 5px;">GEORGIA (GA)</div>
         </div>
-        <div class="header-logo-section">
-            <h1 style="margin: 0;">
-                <span class="logo-text-giant">GIANT</span> <span class="logo-text-food">FOODSYSTEM</span>
+        <div style="text-align: center; flex-grow: 1;">
+            <h1 style="margin: 0; font-size: 3.2rem; font-weight: 900; letter-spacing: -1px; line-height: 1;">
+                <span style="color: #E31837;">GIANT</span> <span style="color: #000000;">FOODSYSTEM</span>
             </h1>
-            <p class="tagline">#1 K-food Distributor in USA</p>
+            <p style="font-size: 1.1rem; font-weight: 600; color: #475569; margin: 10px 0 0 0;">#1 K-food Distributor in USA</p>
         </div>
-        <div class="map-icon-container">
+        <div style="text-align: center; width: 120px;">
             {nj_map_svg}
-            <div class="map-label">NEW JERSEY (NJ)</div>
+            <div style="font-size: 0.75rem; font-weight: 800; color: #0f172a; margin-top: 5px;">NEW JERSEY (NJ)</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -232,10 +195,11 @@ for menu in all_menus:
 def view_unified_orders():
     render_official_header()
     
-    # 주요 지표 요약
+    # [수정] 주요 지표 요약 (Metric Cards - 3, 4번 포함 4개 보장)
     total_orders = len(df_orders)
     total_pallets = df_orders['quantity'].sum() if not df_orders.empty else 0
     pending_trucks = len(df_trucks[df_trucks['assigned'] == 0])
+    match_rate = int((1 - pending_trucks/max(len(df_trucks),1))*100)
     
     m1, m2, m3, m4 = st.columns(4)
     with m1:
@@ -245,14 +209,14 @@ def view_unified_orders():
     with m3:
         st.markdown(f'<div class="metric-card"><div class="metric-label">배차 대기 트럭</div><div class="metric-value">{pending_trucks}대</div></div>', unsafe_allow_html=True)
     with m4:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">백홀 매칭률</div><div class="metric-value">{int((1 - pending_trucks/max(len(df_trucks),1))*100)}%</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="metric-card"><div class="metric-label">백홀 매칭률</div><div class="metric-value">{match_rate}%</div></div>', unsafe_allow_html=True)
 
     st.markdown("---")
     
     col_map, col_list = st.columns([1.5, 1])
     
     with col_map:
-        st.subheader("🌐 Logistics Network (GA - NJ)")
+        st.subheader("🌐 Logistics Network (GA - NJ Hub)")
         render_network_map()
     
     with col_list:
