@@ -188,7 +188,7 @@ def fetch_usda_api_data(manual_id=None):
     ]
 
     if not api_key:
-        return pd.DataFrame(demo_prices), "API 키 미설정", None
+        return pd.DataFrame(demo_prices), "API 키 미설정", {"error": "API 키가 없습니다."}
 
     target_id = manual_id if manual_id else "3646"
     
@@ -206,14 +206,16 @@ def fetch_usda_api_data(manual_id=None):
     headers = {
         "Authorization": f"Basic {encoded_auth}",
         "Accept": "application/json",
-        "User-Agent": "GiantFoodsystem-Dashboard/2.8"
+        "User-Agent": "GiantFoodsystem-Dashboard/3.0"
     }
     
     last_status = "No Attempt"
     debug_log = []
     final_response = None
     successful_url = ""
-    raw_json_data = None
+    
+    # 탭에 표시할 원본 데이터 (항상 무언가를 담아 반환)
+    raw_json_data = {"status": "통신 실패", "message": "유효한 응답 데이터를 받지 못했습니다."}
     
     try:
         # 1. API 통신 시도
@@ -221,6 +223,13 @@ def fetch_usda_api_data(manual_id=None):
             try:
                 res = requests.get(url, headers=headers, timeout=12)
                 last_status = res.status_code
+                
+                # 실패했더라도 그 응답(HTML 등)을 저장해 둠
+                try:
+                    raw_json_data = res.json()
+                except:
+                    raw_json_data = {"status_code": last_status, "raw_response_text": res.text[:2000]}
+                
                 if res.status_code == 200:
                     final_response = res
                     successful_url = url
@@ -229,15 +238,11 @@ def fetch_usda_api_data(manual_id=None):
                     debug_log.append(f"URL: {url} | Status: {res.status_code}")
             except Exception as e:
                 debug_log.append(f"URL: {url} | Exception: {str(e)}")
+                raw_json_data = {"error": str(e)}
                 continue
         
-        # 2. 통신 결과 확인 및 Raw JSON 확보
+        # 2. 통신 결과 확인
         if final_response:
-            try:
-                raw_json_data = final_response.json()
-            except Exception:
-                pass
-
             if successful_url.endswith("/reports"):
                 st.session_state['api_debug_details'] = debug_log + ["", "🎯 진단 결과: API 통신 성공", "현재 표시되는 데이터는 로직 검증용 시뮬레이션입니다."]
                 return pd.DataFrame(demo_prices), "API 통신 성공 (시뮬레이션 모드 가동 중)", raw_json_data
@@ -245,10 +250,11 @@ def fetch_usda_api_data(manual_id=None):
                 return pd.DataFrame(demo_prices), f"API 통신 성공 ({datetime.now().strftime('%H:%M:%S')} - 시뮬레이션)", raw_json_data
         else:
             st.session_state['api_debug_details'] = debug_log
-            return pd.DataFrame(demo_prices), f"통신 실패 (Status: {last_status}) - 시뮬레이션 가동", None
+            # 실패해도 raw_json_data (에러 텍스트)를 같이 넘겨줌
+            return pd.DataFrame(demo_prices), f"통신 실패 (Status: {last_status}) - 시뮬레이션 가동", raw_json_data
             
     except Exception as e:
-        return pd.DataFrame(demo_prices), f"시스템 오류 - 시뮬레이션 가동", None
+        return pd.DataFrame(demo_prices), f"시스템 오류 - 시뮬레이션 가동", {"error_message": str(e)}
 
 # ==========================================
 # 3. 데이터 로드 로직 (구글 시트 연동)
@@ -383,10 +389,10 @@ def view_market_price_comparison():
             st.text(log)
         st.markdown('</div>', unsafe_allow_html=True)
         
-    # 개발자를 위한 실제 RAW JSON 뷰어 탭 추가
-    if raw_json and use_live_api:
-        with st.expander(f"💻 실제 {manual_report_id}번 리포트 Raw JSON (파싱 개발용)"):
-            st.info("실제 데이터를 화면에 띄우기 위한 매핑 작업(Parsing)을 하려면, 아래 출력된 JSON 구조의 키(Key) 값들을 파악하여 데이터 추출 코드를 작성해야 합니다.")
+    # 개발자를 위한 실제 RAW JSON 뷰어 (조건 완화: 스위치가 켜져있으면 무조건 표시)
+    if use_live_api:
+        with st.expander(f"💻 실제 {manual_report_id}번 리포트 Raw Data (파싱 개발용)", expanded=False):
+            st.info("실제 데이터를 화면에 띄우기 위한 매핑 작업(Parsing)을 하려면, 아래 출력된 데이터 구조를 파악해야 합니다. (실패 시 서버의 오류 메시지가 표시됩니다.)")
             st.json(raw_json)
 
     st.markdown("---")
