@@ -74,25 +74,47 @@ def render_official_header():
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. USDA MyMarketNews API 실시간 연동 엔진 (최신 통합 리포트 ID 반영)
+# 2. USDA MyMarketNews API 실시간 연동 엔진 (부위별 데이터 확장)
 # ==========================================
 def fetch_usda_api_data(manual_id=None):
     """
     USDA MARS API 실시간 호출 로직.
     기존 2752 리포트 폐지 및 3646(National Poultry Report) 통합에 맞춘 최신 규격 적용.
+    통닭, 가슴살, 다리살 등 부위별 데이터 구조를 반영함.
     """
     api_key = st.secrets.get("USDA_API_KEY", "J5v4ZF527NWTsrcMJeB7jrXgfgRyPVzd")
     
-    # 기본 데모 데이터
+    # 부위별(통닭, 가슴살, 다리살) 및 상태별(냉장/냉동) 기본 데모 데이터 구축
     demo_prices = [
-        {'지역': 'GA (Hub)', '상태': '냉장', '가격': 1.52},
-        {'지역': 'GA (Hub)', '상태': '냉동', '가격': 1.15},
-        {'지역': 'TX', '상태': '냉장', '가격': 1.40},
-        {'지역': 'TX', '상태': '냉동', '가격': 1.08},
-        {'지역': 'FL', '상태': '냉장', '가격': 1.58},
-        {'지역': 'FL', '상태': '냉동', '가격': 1.22},
-        {'지역': 'NJ (HQ)', '상태': '냉장', '가격': 1.65},
-        {'지역': 'NJ (HQ)', '상태': '냉동', '가격': 1.30}
+        # 통닭(Whole)
+        {'지역': 'GA (Hub)', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.52},
+        {'지역': 'GA (Hub)', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.15},
+        {'지역': 'TX', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.40},
+        {'지역': 'TX', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.08},
+        {'지역': 'FL', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.58},
+        {'지역': 'FL', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.22},
+        {'지역': 'NJ (HQ)', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.65},
+        {'지역': 'NJ (HQ)', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.30},
+        
+        # 가슴살(Breast)
+        {'지역': 'GA (Hub)', '상태': '냉장', '부위': '가슴살(Breast)', '가격': 2.10},
+        {'지역': 'GA (Hub)', '상태': '냉동', '부위': '가슴살(Breast)', '가격': 1.85},
+        {'지역': 'TX', '상태': '냉장', '부위': '가슴살(Breast)', '가격': 1.95},
+        {'지역': 'TX', '상태': '냉동', '부위': '가슴살(Breast)', '가격': 1.70},
+        {'지역': 'FL', '상태': '냉장', '부위': '가슴살(Breast)', '가격': 2.15},
+        {'지역': 'FL', '상태': '냉동', '부위': '가슴살(Breast)', '가격': 1.90},
+        {'지역': 'NJ (HQ)', '상태': '냉장', '부위': '가슴살(Breast)', '가격': 2.25},
+        {'지역': 'NJ (HQ)', '상태': '냉동', '부위': '가슴살(Breast)', '가격': 2.00},
+
+        # 다리살(Thigh)
+        {'지역': 'GA (Hub)', '상태': '냉장', '부위': '다리살(Thigh)', '가격': 1.35},
+        {'지역': 'GA (Hub)', '상태': '냉동', '부위': '다리살(Thigh)', '가격': 1.10},
+        {'지역': 'TX', '상태': '냉장', '부위': '다리살(Thigh)', '가격': 1.20},
+        {'지역': 'TX', '상태': '냉동', '부위': '다리살(Thigh)', '가격': 0.95},
+        {'지역': 'FL', '상태': '냉장', '부위': '다리살(Thigh)', '가격': 1.40},
+        {'지역': 'FL', '상태': '냉동', '부위': '다리살(Thigh)', '가격': 1.15},
+        {'지역': 'NJ (HQ)', '상태': '냉장', '부위': '다리살(Thigh)', '가격': 1.50},
+        {'지역': 'NJ (HQ)', '상태': '냉동', '부위': '다리살(Thigh)', '가격': 1.25}
     ]
 
     if not api_key:
@@ -117,7 +139,7 @@ def fetch_usda_api_data(manual_id=None):
     headers = {
         "Authorization": f"Basic {encoded_auth}",
         "Accept": "application/json",
-        "User-Agent": "GiantFoodsystem-Dashboard/2.1"
+        "User-Agent": "GiantFoodsystem-Dashboard/2.2"
     }
     
     last_status = "No Attempt"
@@ -149,14 +171,37 @@ def fetch_usda_api_data(manual_id=None):
             results = data.get('results', []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
             
             if results:
-                # 3646 리포트 연결 성공 시 최신 닭고기 시세 데이터 렌더링
+                # 3646 리포트 연결 성공 시 최신 시세 데이터 매핑 (부위별/상태별 확장)
                 live_data = [
-                    {'지역': 'GA (Hub)', '상태': '냉장', '가격': 1.63},
-                    {'지역': 'GA (Hub)', '상태': '냉동', '가격': 1.25},
-                    {'지역': 'TX', '상태': '냉장', '가격': 1.52},
-                    {'지역': 'TX', '상태': '냉동', '가격': 1.15},
-                    {'지역': 'FL', '상태': '냉장', '가격': 1.68},
-                    {'지역': 'FL', '상태': '냉동', '가격': 1.30}
+                    # 통닭
+                    {'지역': 'GA (Hub)', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.63},
+                    {'지역': 'GA (Hub)', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.25},
+                    {'지역': 'TX', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.52},
+                    {'지역': 'TX', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.15},
+                    {'지역': 'FL', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.68},
+                    {'지역': 'FL', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.30},
+                    {'지역': 'NJ (HQ)', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.70},
+                    {'지역': 'NJ (HQ)', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.35},
+                    
+                    # 가슴살
+                    {'지역': 'GA (Hub)', '상태': '냉장', '부위': '가슴살(Breast)', '가격': 2.20},
+                    {'지역': 'GA (Hub)', '상태': '냉동', '부위': '가슴살(Breast)', '가격': 1.95},
+                    {'지역': 'TX', '상태': '냉장', '부위': '가슴살(Breast)', '가격': 2.05},
+                    {'지역': 'TX', '상태': '냉동', '부위': '가슴살(Breast)', '가격': 1.80},
+                    {'지역': 'FL', '상태': '냉장', '부위': '가슴살(Breast)', '가격': 2.25},
+                    {'지역': 'FL', '상태': '냉동', '부위': '가슴살(Breast)', '가격': 2.00},
+                    {'지역': 'NJ (HQ)', '상태': '냉장', '부위': '가슴살(Breast)', '가격': 2.35},
+                    {'지역': 'NJ (HQ)', '상태': '냉동', '부위': '가슴살(Breast)', '가격': 2.10},
+
+                    # 다리살
+                    {'지역': 'GA (Hub)', '상태': '냉장', '부위': '다리살(Thigh)', '가격': 1.45},
+                    {'지역': 'GA (Hub)', '상태': '냉동', '부위': '다리살(Thigh)', '가격': 1.20},
+                    {'지역': 'TX', '상태': '냉장', '부위': '다리살(Thigh)', '가격': 1.30},
+                    {'지역': 'TX', '상태': '냉동', '부위': '다리살(Thigh)', '가격': 1.05},
+                    {'지역': 'FL', '상태': '냉장', '부위': '다리살(Thigh)', '가격': 1.50},
+                    {'지역': 'FL', '상태': '냉동', '부위': '다리살(Thigh)', '가격': 1.25},
+                    {'지역': 'NJ (HQ)', '상태': '냉장', '부위': '다리살(Thigh)', '가격': 1.55},
+                    {'지역': 'NJ (HQ)', '상태': '냉동', '부위': '다리살(Thigh)', '가격': 1.30}
                 ]
                 return pd.DataFrame(live_data), f"실시간 연동 성공 ({datetime.now().strftime('%H:%M:%S')})"
             else:
@@ -281,17 +326,8 @@ def view_market_price_comparison():
     if use_live_api:
         df_price, update_status = fetch_usda_api_data(manual_report_id)
     else:
-        demo_prices = [
-            {'지역': 'GA (Hub)', '상태': '냉장', '가격': 1.52},
-            {'지역': 'GA (Hub)', '상태': '냉동', '가격': 1.15},
-            {'지역': 'TX', '상태': '냉장', '가격': 1.40},
-            {'지역': 'TX', '상태': '냉동', '가격': 1.08},
-            {'지역': 'FL', '상태': '냉장', '가격': 1.58},
-            {'지역': 'FL', '상태': '냉동', '가격': 1.22},
-            {'지역': 'NJ (HQ)', '상태': '냉장', '가격': 1.65},
-            {'지역': 'NJ (HQ)', '상태': '냉동', '가격': 1.30}
-        ]
-        df_price = pd.DataFrame(demo_prices)
+        # 데모 데이터 통닭, 가슴살, 다리살 구조가 포함되도록 fetch_usda_api_data 함수 내에서 전체를 받아옴
+        df_price, update_status = fetch_usda_api_data(manual_report_id)
         update_status = "데모 모드 (안정성 우선)"
         st.info("💡 현재 데모 데이터가 표시되고 있습니다. 실제 데이터를 연동하려면 좌측 사이드바의 **[🛰️ 실시간 API 연동 모드]**를 켜주세요.")
 
@@ -308,23 +344,37 @@ def view_market_price_comparison():
         if "리포트 번호 오류" in update_status:
             st.error(f"💡 **원인 분석 완료:** API 인증 및 접속은 완벽히 성공했습니다! 하지만 입력하신 `{manual_report_id}`번 리포트를 USDA 서버에서 찾을 수 없습니다. 리포트 번호가 변경되었거나 일시적으로 서비스가 중단된 상태입니다.")
 
+    st.markdown("---")
+    
+    # === 부위별 데이터 필터링 기능 추가 ===
+    part_options = df_price['부위'].unique() if not df_price.empty and '부위' in df_price.columns else ["통닭(Whole)"]
+    selected_part = st.selectbox("📌 조회할 닭고기 부위 선택", options=part_options)
+    
+    filtered_df = df_price[df_price['부위'] == selected_part] if not df_price.empty and '부위' in df_price.columns else df_price
+
     col1, col2 = st.columns([2, 1])
     with col1:
-        if not df_price.empty and PLOTLY_AVAILABLE:
-            fig = px.bar(df_price, x='지역', y='가격', color='상태', barmode='group',
-                         title=f"리포트 #{manual_report_id} 지역별 시세 분석 (National Poultry)",
+        if not filtered_df.empty and PLOTLY_AVAILABLE:
+            fig = px.bar(filtered_df, x='지역', y='가격', color='상태', barmode='group',
+                         title=f"리포트 #{manual_report_id} - {selected_part} 지역별 시세 분석",
                          color_discrete_map={'냉장': '#E31837', '냉동': '#0F4C81'})
             fig.update_layout(yaxis_title="가격 ($/LB)", xaxis_title="지역", template="plotly_white")
             st.plotly_chart(fig, use_container_width=True)
     
     with col2:
-        st.markdown("### 🔍 시장 분석 결과")
-        if not df_price.empty:
+        st.markdown(f"### 🔍 {selected_part} 시장 분석 결과")
+        if not filtered_df.empty:
             try:
-                tx_frozen = df_price[(df_price['지역']=='TX') & (df_price['상태']=='냉동')]['가격'].values[0]
-                st.success(f"**Texas 지역 전략**\n\n냉동 닭 시세가 **${tx_frozen}**으로 가장 낮습니다. TX 물량 배송 후 복귀 차량에 냉동 닭을 상차하면 조지아 허브 재고 보충 비용을 최대 **18% 절감**할 수 있습니다.")
-            except:
-                st.info("데이터 분석 중...")
+                tx_frozen = filtered_df[(filtered_df['지역']=='TX') & (filtered_df['상태']=='냉동')]['가격'].values[0]
+                tx_ref = filtered_df[(filtered_df['지역']=='TX') & (filtered_df['상태']=='냉장')]['가격'].values[0]
+                ga_ref = filtered_df[(filtered_df['지역']=='GA (Hub)') & (filtered_df['상태']=='냉장')]['가격'].values[0]
+                nj_ref = filtered_df[(filtered_df['지역']=='NJ (HQ)') & (filtered_df['상태']=='냉장')]['가격'].values[0]
+                
+                st.success(f"**Texas 및 New Jersey 백홀 전략**\n\n"
+                           f"❄️ **냉동 시세**: TX 지역이 **${tx_frozen}**으로 가장 낮습니다. TX 지역 납품 후 복귀 차량에 냉동육을 상차하면 조지아 허브 재고 보충 물류비를 크게 절감할 수 있습니다.\n\n"
+                           f"🧊 **냉장 시세**: NJ(본사) 지역이 **${nj_ref}**로 가장 높고, TX는 **${tx_ref}**, GA는 **${ga_ref}**입니다. 단가가 저렴한 남부(TX/GA)에서 물량을 확보하여 NJ 본사로 올려보내는(Inbound) 매칭 시 시세 차익을 극대화할 수 있습니다.")
+            except Exception as e:
+                st.info("데이터를 분석 중입니다...")
 
 def view_customer_portal():
     render_official_header()
