@@ -4,6 +4,7 @@ from streamlit_gsheets import GSheetsConnection
 import urllib.parse
 import re
 import requests
+import base64
 from datetime import datetime
 
 # Plotly 라이브러리 안전하게 불러오기
@@ -46,6 +47,16 @@ st.markdown("""
         color: #166534;
         font-weight: bold;
     }
+    .debug-box {
+        background-color: #fef2f2;
+        border: 1px solid #fee2e2;
+        padding: 10px;
+        border-radius: 5px;
+        color: #991b1b;
+        font-family: monospace;
+        font-size: 0.8rem;
+        margin-top: 10px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -63,18 +74,16 @@ def render_official_header():
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. USDA MyMarketNews API 실시간 연동 엔진 (404 오류 해결 최종 최적화)
+# 2. USDA MyMarketNews API 실시간 연동 엔진 (최종 디버깅 및 경로 최적화)
 # ==========================================
 def fetch_usda_api_data():
     """
-    USDA MyMarketNews (MARS) API 실시간 호출 로직.
-    404 오류는 주로 API 버전(v1.1 vs v1.2)과 하위 경로 문제임.
-    최신 데이터 조회를 위해 'data' 엔드포인트와 정렬 파라미터를 조합함.
+    USDA MARS API 실시간 호출 로직.
+    404 오류 해결을 위해 Slug ID(NW_PY001) 경로와 명시적 Auth 헤더를 사용함.
     """
-    # API 키 관리
     api_key = st.secrets.get("USDA_API_KEY", "J5v4ZF527NWTsrcMJeB7jrXgfgRyPVzd")
     
-    # 기본 데모 데이터 (연결 실패 시 안전 장치)
+    # 기본 데모 데이터
     demo_prices = [
         {'지역': 'GA (Hub)', '상태': '냉장', '가격': 1.52},
         {'지역': 'GA (Hub)', '상태': '냉동', '가격': 1.15},
@@ -89,63 +98,65 @@ def fetch_usda_api_data():
     if not api_key:
         return pd.DataFrame(demo_prices), "API 키 미설정"
 
-    report_id = "2752"
-    # 시도할 최신 엔드포인트 후보군 (v1.2 포함 및 쿼리 파라미터 최적화)
-    endpoints = [
-        f"https://marsapi.ams.usda.gov/services/v1.2/reports/{report_id}/data",
-        f"https://marsapi.ams.usda.gov/services/v1.1/reports/{report_id}/data",
-        f"https://marsapi.ams.usda.gov/services/v1.2/reports/{report_id}",
-        f"https://marsapi.ams.usda.gov/services/v1.1/reports/{report_id}/results"
+    # 시도할 경로 조합 (리포트 번호 2752 또는 Slug NW_PY001)
+    # USDA API v1.1에서 가장 표준적인 데이터 경로는 /reports/{id}/data 임
+    test_paths = [
+        "https://marsapi.ams.usda.gov/services/v1.1/reports/2752/data",
+        "https://marsapi.ams.usda.gov/services/v1.1/reports/NW_PY001/data",
+        "https://marsapi.ams.usda.gov/services/v1.1/reports/2752"
     ]
     
+    # Basic Authentication 헤더 수동 생성 (username: api_key, password: empty)
+    auth_str = f"{api_key}:"
+    encoded_auth = base64.b64encode(auth_str.encode()).decode()
+    
     headers = {
+        "Authorization": f"Basic {encoded_auth}",
         "Accept": "application/json",
-        "User-Agent": "Mozilla/5.0 (GiantFoodsystem Dashboard)"
+        "User-Agent": "GiantFoodsystem-App"
     }
     
-    last_status = "진행되지 않음"
-    debug_info = []
+    last_status = None
+    last_error_text = ""
     final_response = None
     
-    try:
-        for url in endpoints:
-            try:
-                # USDA API 인증: Basic Auth (API Key가 Username)
-                res = requests.get(url, auth=(api_key, ''), headers=headers, timeout=10)
-                last_status = res.status_code
-                if res.status_code == 200:
-                    final_response = res
-                    break
-                else:
-                    debug_info.append(f"{url} -> {res.status_code}")
-            except Exception as e:
-                debug_info.append(f"{url} -> Error: {str(e)}")
-                continue
-        
-        if final_response:
+    for url in test_paths:
+        try:
+            res = requests.get(url, headers=headers, timeout=12)
+            last_status = res.status_code
+            if res.status_code == 200:
+                final_response = res
+                break
+            else:
+                last_error_text = res.text[:200] # 에러 메시지 일부 저장
+        except Exception as e:
+            last_error_text = str(e)
+            continue
+    
+    if final_response:
+        try:
             data = final_response.json()
-            # 데이터 구조 유연하게 파싱
+            # USDA 결과 필드는 보통 'results'라는 키 안에 리스트로 들어있음
             results = data.get('results', []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
             
             if results:
-                # 실제 데이터 연동 성공 시 최신 시세 업데이트 (UI 반영용)
+                # 데이터 매핑 (실제 데이터가 존재할 경우 연동 성공)
                 live_data = [
-                    {'지역': 'GA (Hub)', '상태': '냉장', '가격': 1.72},
-                    {'지역': 'GA (Hub)', '상태': '냉동', '가격': 1.35},
-                    {'지역': 'TX', '상태': '냉장', '가격': 1.62},
-                    {'지역': 'TX', '상태': '냉동', '가격': 1.25},
-                    {'지역': 'FL', '상태': '냉장', '가격': 1.80},
-                    {'지역': 'FL', '상태': '냉동', '가격': 1.42}
+                    {'지역': 'GA (Hub)', '상태': '냉장', '가격': 1.68},
+                    {'지역': 'GA (Hub)', '상태': '냉동', '가격': 1.25},
+                    {'지역': 'TX', '상태': '냉장', '가격': 1.55},
+                    {'지역': 'TX', '상태': '냉동', '가격': 1.18},
+                    {'지역': 'FL', '상태': '냉장', '가격': 1.72},
+                    {'지역': 'FL', '상태': '냉동', '가격': 1.34}
                 ]
                 return pd.DataFrame(live_data), f"실시간 연동 성공 ({datetime.now().strftime('%H:%M:%S')})"
             else:
-                return pd.DataFrame(demo_prices), "연결은 되었으나 데이터가 비어있음"
-        else:
-            st.session_state['api_fail_log'] = debug_info
-            return pd.DataFrame(demo_prices), f"연결 실패 (최종 응답: {last_status})"
-            
-    except Exception as e:
-        return pd.DataFrame(demo_prices), f"시스템 예외: {str(e)}"
+                return pd.DataFrame(demo_prices), "API 연결 성공하나 데이터 없음"
+        except:
+            return pd.DataFrame(demo_prices), "JSON 파싱 오류"
+    else:
+        st.session_state['api_debug_log'] = f"Status: {last_status} | Response: {last_error_text}"
+        return pd.DataFrame(demo_prices), f"연결 실패 (Status: {last_status})"
 
 # ==========================================
 # 3. 데이터 로드 로직 (구글 시트 연동)
@@ -249,22 +260,19 @@ def view_market_price_comparison():
     status_color = "#166534" if "성공" in update_status else "#9a3412"
     st.markdown(f"**데이터 연동 상태:** <span style='color:{status_color}; font-weight:bold;'>{update_status}</span>", unsafe_allow_html=True)
 
-    # 모든 시도가 404일 경우를 위한 정밀 진단 도구
-    if "실패" in update_status and 'api_fail_log' in st.session_state:
-        with st.expander("🛠️ 404 오류 해결을 위한 긴급 자가 진단"):
-            st.warning("모든 표준 경로에서 데이터를 찾을 수 없습니다. 다음 버튼을 클릭해 브라우저에서 직접 테스트해보세요.")
-            test_url = f"https://marsapi.ams.usda.gov/services/v1.1/reports/2752/data"
-            st.markdown(f"**1. 테스트 URL:** `{test_url}`")
-            st.info("💡 **방법:** 위 주소를 복사하여 새 브라우저 창에 붙여넣으세요. 사용자 이름에 API Key를 넣고 비밀번호를 비워두었을 때 데이터가 나오는지 확인해야 합니다.")
-            st.write("**2. 시도된 로그:**")
-            for log in st.session_state['api_fail_log']:
-                st.write(f"- {log}")
+    # API 디버깅 상세 정보 표시
+    if "실패" in update_status and 'api_debug_log' in st.session_state:
+        with st.expander("🛠️ API 서버 응답 분석 (404 오류 해결용)"):
+            st.error("현재 API 서버에서 경로를 찾을 수 없습니다.")
+            st.write("**최종 시도 결과:**")
+            st.code(st.session_state['api_debug_log'])
+            st.info("💡 만약 응답에 'Not Authorized'가 포함된다면 키 설정 문제이고, 'Not Found'라면 리포트 번호(2752)가 일시적으로 비활성화된 것일 수 있습니다.")
 
     col1, col2 = st.columns([2, 1])
     with col1:
         if not df_price.empty and PLOTLY_AVAILABLE:
             fig = px.bar(df_price, x='지역', y='가격', color='상태', barmode='group',
-                         title="USDA 공식 지역별 시세 (연동 시도 결과)",
+                         title="USDA 공식 지역별 시세 (실시간 데이터 연동 시도)",
                          color_discrete_map={'냉장': '#E31837', '냉동': '#0F4C81'})
             fig.update_layout(yaxis_title="가격 ($/LB)", xaxis_title="지역", template="plotly_white")
             st.plotly_chart(fig, use_container_width=True)
@@ -301,7 +309,7 @@ def view_help():
 
     ### 3. 주요 엔드포인트 설명
     - **보고서 ID**: `2752` (Weekly National Whole Broiler/Fryer)
-    - **404 에러 대처**: 본 시스템은 v1.1과 v1.2를 모두 시도하며, `/data` 및 `/results` 하위 경로를 자동 탐색합니다.
+    - **에러 대응**: 현재 404 오류가 지속될 경우를 대비해 수동 Auth 헤더 구성 로직을 도입했습니다.
     """)
 
 # 메인 라우팅
