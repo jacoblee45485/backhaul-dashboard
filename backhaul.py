@@ -145,42 +145,42 @@ st.sidebar.image(qr_api_url, caption="시스템 접속 QR", width=150)
 
 def render_network_map():
     """
-    미국 내 주요 물류 거점과 GA 본사를 잇는 네트워크 시각화
+    미국 내 주요 물류 거점과 GA 본사를 잇는 네트워크 시각화 (도시/지역명 포함)
     """
     if not PLOTLY_AVAILABLE:
         st.warning("지도 라이브러리(Plotly)를 사용할 수 없습니다.")
         return
 
-    # 주요 거점 좌표 설정
+    # 주요 거점 좌표 및 지역명 설정
     hubs = {
-        'GA (Main Center)': [33.7490, -84.3880],
-        'NJ (Northern Hub)': [40.7128, -74.0060],
-        'TX (Western Hub)': [29.7604, -95.3698],
-        'FL (Southern Hub)': [25.7617, -80.1918],
-        'NC/SC (Coastal Hub)': [35.2271, -80.8431]
+        'Atlanta, GA (HQ)': [33.7490, -84.3880],
+        'Newark, NJ (Hub)': [40.7128, -74.0060],
+        'Houston, TX (Hub)': [29.7604, -95.3698],
+        'Miami, FL (Hub)': [25.7617, -80.1918],
+        'Charlotte, NC/SC': [35.2271, -80.8431]
     }
     
     fig = go.Figure()
 
     # 조지아 메인 센터에서 각 거점으로 이어지는 경로선 추가
     for name, coord in hubs.items():
-        if name != 'GA (Main Center)':
+        if 'GA' not in name:
             fig.add_trace(go.Scattergeo(
                 locationmode = 'USA-states',
-                lon = [hubs['GA (Main center)'][1] if 'GA' in hubs else -84.3880, coord[1]],
-                lat = [hubs['GA (Main center)'][0] if 'GA' in hubs else 33.7490, coord[0]],
+                lon = [-84.3880, coord[1]],
+                lat = [33.7490, coord[0]],
                 mode = 'lines',
                 line = dict(width = 1.5, color = '#cbd5e1'),
-                opacity = 0.6,
+                opacity = 0.5,
                 hoverinfo = 'none'
             ))
 
-    # 거점 포인트 표시
+    # 거점 포인트 및 지역명 라벨 표시
     lats = [v[0] for v in hubs.values()]
     lons = [v[1] for v in hubs.values()]
     names = list(hubs.keys())
     colors = ['#E31837' if 'GA' in n else '#0F4C81' for n in names]
-    sizes = [15 if 'GA' in n else 10 for n in names]
+    sizes = [16 if 'GA' in n else 12 for n in names]
 
     fig.add_trace(go.Scattergeo(
         locationmode = 'USA-states',
@@ -189,6 +189,7 @@ def render_network_map():
         text = names,
         mode = 'markers+text',
         textposition = "top center",
+        textfont = dict(family="sans serif", size=12, color="#0f172a"),
         marker = dict(
             size = sizes,
             color = colors,
@@ -209,7 +210,7 @@ def render_network_map():
             lakecolor = "rgb(255, 255, 255)"
         ),
         margin = dict(l=0, r=0, t=0, b=0),
-        height = 450,
+        height = 480,
         showlegend = False
     )
     st.plotly_chart(fig, use_container_width=True)
@@ -230,7 +231,7 @@ def view_unified_orders():
     # 지도와 리스트 병렬 배치
     c1, c2 = st.columns([1.6, 1])
     with c1:
-        st.subheader("🌐 전국 물류 네트워크 현황")
+        st.subheader("🌐 전국 물류 네트워크 및 주요 거점")
         render_network_map()
     with c2:
         st.subheader("📍 지역별 실시간 수요")
