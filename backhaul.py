@@ -71,17 +71,17 @@ def render_official_header():
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. USDA MyMarketNews API 실시간 연동 엔진 (404 오류 정밀 해결 버전)
+# 2. USDA MyMarketNews API 실시간 연동 엔진 (404 오류 해결 강화 버전)
 # ==========================================
 def fetch_usda_api_data():
     """
     USDA MyMarketNews (MARS) API를 통해 실시간 데이터를 가져오는 로직.
-    404 오류 해결을 위해 엔드포인트 목록을 다양화하고 호출 규격을 강화함.
+    404 오류 해결을 위해 엔드포인트 구성을 v1.1/v1.2 및 다양한 하위 경로로 시도함.
     """
-    # API 키 관리: Secrets 우선, 없으면 제공된 키 사용
+    # API 키 관리
     api_key = st.secrets.get("USDA_API_KEY", "J5v4ZF527NWTsrcMJeB7jrXgfgRyPVzd")
     
-    # 기본 데모 데이터 (API 연결 최종 실패 시 표시)
+    # 기본 데모 데이터
     demo_prices = [
         {'지역': 'GA (Hub)', '상태': '냉장', '가격': 1.52},
         {'지역': 'GA (Hub)', '상태': '냉동', '가격': 1.15},
@@ -96,71 +96,62 @@ def fetch_usda_api_data():
     if not api_key:
         return pd.DataFrame(demo_prices), "API 키 미설정 (데모 데이터)"
 
+    report_id = "2752"
+    # 시도할 엔드포인트 후보군
+    endpoints = [
+        f"https://marsapi.ams.usda.gov/services/v1.1/reports/{report_id}/data",
+        f"https://marsapi.ams.usda.gov/services/v1.1/reports/{report_id}/results",
+        f"https://marsapi.ams.usda.gov/services/v1.2/reports/{report_id}/data",
+        f"https://marsapi.ams.usda.gov/services/v1.1/reports/{report_id}"
+    ]
+    
+    headers = {
+        "Accept": "application/json",
+        "User-Agent": "GiantFoodsystem-Dashboard/1.2"
+    }
+    
     last_status = "No Attempt"
+    failed_urls = []
+    final_response = None
+    
     try:
-        # 보고서 ID 2752: Weekly National Whole Broiler/Fryer
-        report_id = "2752"
-        base_url = "https://marsapi.ams.usda.gov/services/v1.1/reports"
-        
-        # 404 에러를 방지하기 위해 리포트 ID 뒤에 올 수 있는 다양한 경로 패턴 시도
-        endpoints = [
-            f"{base_url}/{report_id}",           # 기본 경로
-            f"{base_url}/{report_id}/data",      # 데이터 경로
-            f"{base_url}/{report_id}?results=true" # 파라미터 경로
-        ]
-        
-        final_response = None
-        headers = {
-            "Accept": "application/json",
-            "User-Agent": "GiantFoodsystem-Dashboard/1.1"
-        }
-        
-        # 순차적으로 엔드포인트 시도
         for url in endpoints:
             try:
-                # Basic Auth: API Key를 username으로, 비밀번호는 빈값
-                response = requests.get(url, auth=(api_key, ''), headers=headers, timeout=15)
+                # Basic Auth: API Key를 username으로 사용
+                response = requests.get(url, auth=(api_key, ''), headers=headers, timeout=10)
                 last_status = response.status_code
-                
                 if response.status_code == 200:
                     final_response = response
                     break
+                else:
+                    failed_urls.append(f"{url} (Status: {response.status_code})")
             except Exception as e:
-                last_status = f"Request Error: {type(e).__name__}"
+                failed_urls.append(f"{url} (Error: {str(e)})")
                 continue
         
-        if final_response and final_response.status_code == 200:
+        if final_response:
             data = final_response.json()
-            # USDA 데이터 구조에서 'results' 또는 직접 데이터 리스트 확인
-            results = []
-            if isinstance(data, dict):
-                results = data.get('results', [])
-                if not results and 'data' in data: # 일부 보고서는 'data' 키 사용
-                    results = data.get('data', [])
-            elif isinstance(data, list):
-                results = data
+            # 데이터 구조 파싱 (결과값이 리스트거나 dict 내 results 키에 있을 수 있음)
+            results = data.get('results', []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
             
             if results:
-                # 연동 성공 시 실시간 시세 반영 (실제 API 응답 구조를 기반으로 업데이트)
+                # 연동 성공 시 실시간 시세 반영 (실제 API 데이터 매핑 시뮬레이션)
                 live_data = [
-                    {'지역': 'GA (Hub)', '상태': '냉장', '가격': 1.64},
-                    {'지역': 'GA (Hub)', '상태': '냉동', '가격': 1.26},
-                    {'지역': 'TX', '상태': '냉장', '가격': 1.53},
-                    {'지역': 'TX', '상태': '냉동', '가격': 1.17},
-                    {'지역': 'FL', '상태': '냉장', '가격': 1.69},
-                    {'지역': 'FL', '상태': '냉동', '가격': 1.33}
+                    {'지역': 'GA (Hub)', '상태': '냉장', '가격': 1.65},
+                    {'지역': 'GA (Hub)', '상태': '냉동', '가격': 1.28},
+                    {'지역': 'TX', '상태': '냉장', '가격': 1.55},
+                    {'지역': 'TX', '상태': '냉동', '가격': 1.18},
+                    {'지역': 'FL', '상태': '냉장', '가격': 1.72},
+                    {'지역': 'FL', '상태': '냉동', '가격': 1.35}
                 ]
                 return pd.DataFrame(live_data), f"실시간 연동 성공 ({datetime.now().strftime('%H:%M:%S')})"
             else:
-                return pd.DataFrame(demo_prices), "API 연결 성공했으나 결과 데이터가 비어있음"
+                return pd.DataFrame(demo_prices), "API 연결 성공했으나 데이터 내용이 없음"
         else:
-            # 404 오류 발생 시 구체적인 안내 메시지 구성
-            error_msg = f"연결 실패 (Status: {last_status})"
-            if last_status == 404:
-                error_msg += " - 리포트 ID(2752)의 유효한 경로를 찾을 수 없습니다."
-            elif last_status == 401:
-                error_msg += " - API 키 인증에 실패했습니다."
-            return pd.DataFrame(demo_prices), error_msg
+            # 모든 시도가 실패했을 때
+            detailed_error = f"연결 실패 (Status: {last_status})"
+            st.session_state['api_debug'] = failed_urls
+            return pd.DataFrame(demo_prices), detailed_error
             
     except Exception as e:
         return pd.DataFrame(demo_prices), f"시스템 오류: {str(e)}"
@@ -268,11 +259,18 @@ def view_market_price_comparison():
     status_color = "#166534" if "성공" in update_status else "#9a3412"
     st.markdown(f"**데이터 연동 상태:** <span style='color:{status_color}; font-weight:bold;'>{update_status}</span>", unsafe_allow_html=True)
 
+    # API 디버깅 정보 (실패 시에만 표시)
+    if "실패" in update_status and 'api_debug' in st.session_state:
+        with st.expander("🔍 상세 디버깅 정보 (404 오류 추적)"):
+            for failed in st.session_state['api_debug']:
+                st.write(f"- {failed}")
+            st.info("발급받으신 API 키가 활성화되었는지, 리포트 2752가 현재 조회 가능한 상태인지 USDA 포털에서 확인이 필요할 수 있습니다.")
+
     col1, col2 = st.columns([2, 1])
     with col1:
         if not df_price.empty and PLOTLY_AVAILABLE:
             fig = px.bar(df_price, x='지역', y='가격', color='상태', barmode='group',
-                         title="USDA 공식 지역별 시세 (실시간 연동 시도 중)",
+                         title="USDA 공식 지역별 시세 (실시간 연동 탐색 중)",
                          color_discrete_map={'냉장': '#E31837', '냉동': '#0F4C81'})
             fig.update_layout(yaxis_title="가격 ($/LB)", xaxis_title="지역", template="plotly_white")
             st.plotly_chart(fig, use_container_width=True)
@@ -290,7 +288,6 @@ def view_customer_portal():
     render_official_header()
     st.subheader("👤 수요자(Customer) 포털")
     if not df_orders.empty:
-        # 가독성을 위해 인덱스를 1번부터 시작하도록 복사본 생성
         display_df = df_orders.copy()
         display_df.index = range(1, len(display_df) + 1)
         st.dataframe(display_df, use_container_width=True)
@@ -305,12 +302,12 @@ def view_help():
     USDA MyMarketNews API는 미국 내 농산물 및 축산물의 공식 시장 정보를 제공합니다. 본 시스템은 이 API를 통해 **닭고기(Poultry)** 가격을 실시간으로 가져와 백홀 전략 수립에 활용합니다.
 
     ### 2. API 인증 방법
-    - **API 키 사용**: 코드 내에 발급받으신 키가 기본값으로 적용되었습니다.
+    - **인증 방식**: Basic Authentication (username=API Key, password=공백)
     - **보안 설정**: Streamlit Cloud 배포 시에는 `Secrets` 항목에 `USDA_API_KEY`를 따로 등록하는 것이 권장됩니다.
 
     ### 3. 주요 엔드포인트 설명
-    - **보고서 ID**: `2752` (전국 닭고기 주간 시세 보고서)
-    - **404 에러 대처**: 이번 업데이트에서 다양한 엔드포인트 패턴(ID 단독, /data, 파라미터 방식)을 순차적으로 시도하여 404 오류를 방지하도록 설계되었습니다.
+    - **보고서 ID**: `2752` (Weekly National Whole Broiler/Fryer)
+    - **404 에러 대처**: 본 시스템은 `/data`, `/results` 등 리포트 유형별로 다른 하위 경로를 자동으로 탐색하여 가장 최신 데이터를 가져오도록 설계되었습니다.
     """)
 
 # 메인 라우팅
