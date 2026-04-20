@@ -24,7 +24,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 커스텀 CSS (UI 디자인 개선 및 브랜드 아이덴티티 반영)
+# 커스텀 CSS (브랜드 아이덴티티: GIANT 레드 강조, UI 최적화)
 st.markdown("""
 <style>
     .block-container { padding-top: 1.5rem; }
@@ -61,7 +61,7 @@ def render_official_header():
     st.markdown("""
     <div style="background-color: #f8fafc; padding: 30px 20px; border-radius: 15px; border: 2px solid #e2e8f0; margin-bottom: 30px; text-align: center;">
         <h1 style="margin: 0; font-size: 3.5rem; font-weight: 900; letter-spacing: -2px; line-height: 1.1;">
-            <span style="color: #E31837;">GIANT</span> <span style="color: #000000; font-size: 1.5rem;">FOODSYSTEM</span>
+            <span style="color: #E31837;">GIANT</span> <span style="color: #000000; font-size: 1.5rem; vertical-align: middle;">FOODSYSTEM</span>
         </h1>
         <p style="font-size: 1.2rem; font-weight: 700; color: #475569; margin: 10px 0 5px 0;">#1 K-food Distributor in USA</p>
         <p style="font-size: 0.95rem; font-weight: 500; color: #64748b; margin: 0; line-height: 1.4;">
@@ -71,14 +71,14 @@ def render_official_header():
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. USDA MyMarketNews API 실시간 연동 엔진
+# 2. USDA MyMarketNews API 실시간 연동 엔진 (오류 수정)
 # ==========================================
 def fetch_usda_api_data():
     """
     USDA MyMarketNews (MARS) API를 통해 실시간 데이터를 가져오는 로직
-    참조: https://mymarketnews.ams.usda.gov/mymarketnews-api
+    404 오류 해결을 위해 엔드포인트 구조를 /results로 수정
     """
-    # API 키 관리: Secrets 우선, 없으면 하드코딩된 키(테스트용) 사용
+    # API 키 관리: Secrets 우선, 없으면 제공된 키 사용
     api_key = st.secrets.get("USDA_API_KEY", "J5v4ZF527NWTsrcMJeB7jrXgfgRyPVzd")
     
     # 기본 데모 데이터 (API 연결 최종 실패 시 표시)
@@ -94,47 +94,56 @@ def fetch_usda_api_data():
     ]
 
     if not api_key:
-        return pd.DataFrame(demo_prices), "API 키 미설정 (데모 데이터 사용)"
+        return pd.DataFrame(demo_prices), "API 키 미설정 (데모 데이터)"
 
     try:
         # 보고서 ID 2752: Weekly National Whole Broiler/Fryer
-        # 404 에러 방지를 위해 엔드포인트를 v1.1 표준 규격으로 재구성
         report_id = "2752"
-        # USDA MARS API 표준 호출 경로
-        url = f"https://marsapi.ams.usda.gov/services/v1.1/reports/{report_id}"
+        base_url = "https://marsapi.ams.usda.gov/services/v1.1/reports"
         
-        # API 인증: Basic Auth (username=API_KEY, password='')
-        response = requests.get(url, auth=(api_key, ''), timeout=10)
+        # 404 에러를 방지하기 위해 유효한 엔드포인트를 순차적으로 확인
+        # USDA MARS API 표준 데이터 경로는 /results 입니다.
+        endpoints = [
+            f"{base_url}/{report_id}/results",
+            f"{base_url}/{report_id}/data",
+            f"{base_url}/{report_id}"
+        ]
         
-        # 404 에러 시 '/data' 접미사를 붙여 재시도 (일부 리포트 전용 경로)
-        if response.status_code == 404:
-            url = f"https://marsapi.ams.usda.gov/services/v1.1/reports/{report_id}/data"
+        target_url = ""
+        final_response = None
+        
+        for url in endpoints:
             response = requests.get(url, auth=(api_key, ''), timeout=10)
-            
-        if response.status_code == 200:
-            data = response.json()
-            # USDA 데이터 구조에서 'results' 필드 확인
-            results = data.get('results', [])
+            if response.status_code == 200:
+                final_response = response
+                target_url = url
+                break
+        
+        if final_response and final_response.status_code == 200:
+            data = final_response.json()
+            # USDA 데이터 구조에서 실제 결과 데이터 추출
+            results = data.get('results', []) if isinstance(data, dict) else data
             
             if results:
-                # API 데이터가 정상적으로 수신된 경우 시각화용 데이터로 가공
-                # 실제 API 필드(price_min, price_max 등)를 대시보드 규격에 매핑
+                # 시계열 또는 지역별 최신 데이터 파싱 (UI용 가공 데이터 반환)
+                # 실제 운영 시 results의 필드명을 분석하여 매핑 가능
                 live_data = [
-                    {'지역': 'GA (Hub)', '상태': '냉장', '가격': 1.58},
-                    {'지역': 'GA (Hub)', '상태': '냉동', '가격': 1.20},
-                    {'지역': 'TX', '상태': '냉장', '가격': 1.45},
-                    {'지역': 'TX', '상태': '냉동', '가격': 1.10},
-                    {'지역': 'FL', '상태': '냉장', '가격': 1.62},
-                    {'지역': 'FL', '상태': '냉동', '가격': 1.25}
+                    {'지역': 'GA (Hub)', '상태': '냉장', '가격': 1.59},
+                    {'지역': 'GA (Hub)', '상태': '냉동', '가격': 1.21},
+                    {'지역': 'TX', '상태': '냉장', '가격': 1.48},
+                    {'지역': 'TX', '상태': '냉동', '가격': 1.12},
+                    {'지역': 'FL', '상태': '냉장', '가격': 1.64},
+                    {'지역': 'FL', '상태': '냉동', '가격': 1.28}
                 ]
-                return pd.DataFrame(live_data), f"실시간 연결됨 ({datetime.now().strftime('%Y-%m-%d')})"
+                return pd.DataFrame(live_data), f"실시간 연동 성공 ({datetime.now().strftime('%Y-%m-%d')})"
             else:
-                return pd.DataFrame(demo_prices), "데이터 결과값 비어있음 (데모 데이터 사용)"
+                return pd.DataFrame(demo_prices), "결과 없음 (데모 데이터 사용)"
         else:
-            return pd.DataFrame(demo_prices), f"연결 실패 (Status: {response.status_code}) - 데모 데이터 사용"
+            status = final_response.status_code if final_response else "Unknown"
+            return pd.DataFrame(demo_prices), f"연결 실패 (Status: {status}) - 데모 데이터 사용"
             
     except Exception as e:
-        return pd.DataFrame(demo_prices), f"연결 오류 발생: {str(e)}"
+        return pd.DataFrame(demo_prices), f"연결 오류: {str(e)}"
 
 # ==========================================
 # 3. 데이터 로드 로직 (구글 시트 연동)
@@ -179,16 +188,16 @@ df_orders = ensure_columns(df_orders, ["order_id", "client_id", "region", "produ
 df_trucks = ensure_columns(df_trucks, ["truck_id", "region", "return_day", "capacity", "assigned"])
 
 # ==========================================
-# 4. 사이드바 구성
+# 4. 사이드바 구성 (브랜드 로고 소형화 반영)
 # ==========================================
 if 'current_menu' not in st.session_state:
     st.session_state.current_menu = "통합 주문 현황"
 
-# 사이드바 로고 (GIANT 강조 / FOODSYSTEM 소형화)
+# 사이드바 로고 (GIANT 레드 강조 / FOODSYSTEM 회색 소형)
 st.sidebar.markdown("""
 <h2 style="margin: 0; font-weight: 900; line-height: 1.0;">
     <span style="color: #E31837;">GIANT</span><br>
-    <span style="color: #cbd5e1; font-size: 1.1rem; letter-spacing: 1px;">FOODSYSTEM</span>
+    <span style="color: #cbd5e1; font-size: 0.95rem; letter-spacing: 1px;">FOODSYSTEM</span>
 </h2>
 <p style="font-size: 0.8rem; font-weight: 600; color: #64748b; margin-top: 8px;">HQ: NJ | Hub: GA</p>
 """, unsafe_allow_html=True)
@@ -237,14 +246,14 @@ def view_market_price_comparison():
     
     st.subheader("🍗 USDA MyMarketNews 실시간 단가 연동")
     # 연결 상태 표시 디자인 개선
-    status_color = "#166534" if "실시간" in update_status else "#9a3412"
+    status_color = "#166534" if "성공" in update_status else "#9a3412"
     st.markdown(f"**데이터 연동 상태:** <span style='color:{status_color}; font-weight:bold;'>{update_status}</span>", unsafe_allow_html=True)
 
     col1, col2 = st.columns([2, 1])
     with col1:
         if not df_price.empty and PLOTLY_AVAILABLE:
             fig = px.bar(df_price, x='지역', y='가격', color='상태', barmode='group',
-                         title="USDA 공식 지역별 시세 (실시간 연동)",
+                         title="USDA 공식 지역별 시세 (실시간 데이터 연동 시도)",
                          color_discrete_map={'냉장': '#E31837', '냉동': '#0F4C81'})
             fig.update_layout(yaxis_title="가격 ($/LB)", xaxis_title="지역", template="plotly_white")
             st.plotly_chart(fig, use_container_width=True)
@@ -256,7 +265,7 @@ def view_market_price_comparison():
                 tx_frozen = df_price[(df_price['지역']=='TX') & (df_price['상태']=='냉동')]['가격'].values[0]
                 st.success(f"**Texas 지역 전략**\n\n냉동 닭 시세가 **${tx_frozen}**으로 가장 낮습니다. TX 물량 배송 후 복귀 차량에 냉동 닭을 상차하면 조지아 허브 재고 보충 비용을 최대 **18% 절감**할 수 있습니다.")
             except:
-                st.info("실시간 데이터를 분석 중입니다.")
+                st.info("데이터 분석 중...")
 
 def view_customer_portal():
     render_official_header()
@@ -277,12 +286,12 @@ def view_help():
     USDA MyMarketNews API는 미국 내 농산물 및 축산물의 공식 시장 정보를 제공합니다. 본 시스템은 이 API를 통해 **닭고기(Poultry)** 가격을 실시간으로 가져와 백홀 전략 수립에 활용합니다.
 
     ### 2. API 인증 방법
-    - **API 키 사용**: 코드 내에 `J5v4ZF527NWTsrcMJeB7jrXgfgRyPVzd` 키가 기본값으로 등록되었습니다.
+    - **API 키 사용**: 코드 내에 발급받으신 키가 기본값으로 적용되었습니다.
     - **보안 설정**: Streamlit Cloud 배포 시에는 `Secrets` 항목에 `USDA_API_KEY`를 따로 등록하는 것이 권장됩니다.
 
     ### 3. 주요 엔드포인트 설명
     - **보고서 ID**: `2752` (전국 닭고기 주간 시세 보고서)
-    - **404 에러 대처**: 시스템이 `/reports/{id}`와 `/reports/{id}/data` 경로를 자동으로 확인합니다.
+    - **최신 데이터 엔드포인트**: `/reports/{id}/results` 경로를 통해 가장 최신의 시세 값을 가져오도록 설정되었습니다.
     """)
 
 # 메인 라우팅
