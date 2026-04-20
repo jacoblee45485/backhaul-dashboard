@@ -8,11 +8,12 @@ from streamlit_gsheets import GSheetsConnection
 st.set_page_config(page_title="GA GLOBAL LOGISTICS - 백홀 관리 시스템", page_icon="🚚", layout="wide")
 
 # 구글 시트 연결 설정
-# ModuleNotFoundError가 발생하면 requirements.txt에 st-gsheets-connection이 있는지 확인하세요.
+# [주의] ModuleNotFoundError가 발생하면 GitHub의 requirements.txt에 
+# st-gsheets-connection 이 정확히 입력되어 있는지 확인해야 합니다.
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
 except Exception as e:
-    st.error("라이브러리 연결 오류가 발생했습니다. requirements.txt 설정을 확인해주세요.")
+    st.error("라이브러리 연결 오류가 발생했습니다. GitHub의 requirements.txt 설정을 확인해주세요.")
 
 # 데이터 불러오기 함수
 @st.cache_data(ttl=60)
@@ -27,7 +28,7 @@ def load_data():
 
 df_clients, df_orders, df_trucks = load_data()
 
-# 데이터 기본 구조 보장
+# 데이터 기본 구조 보장 (데이터가 없을 경우 대비)
 if df_clients.empty:
     df_clients = pd.DataFrame(columns=["client_id", "name", "type"])
 if df_orders.empty:
@@ -55,12 +56,12 @@ def change_menu(menu_name):
 
 all_menus = ["통합 주문 현황", "공동구매 전용 관리", "트럭 배차 현황", "시스템 도움말"]
 
-# 사이드바 상단에 공식 타이틀 배치
+# 사이드바 상단에 회사 공식 타이틀 배치
 st.sidebar.markdown(f"## 🏢 GA GLOBAL LOGISTICS") 
 st.sidebar.caption("통합 백홀 판매/배차 관리 시스템")
 st.sidebar.markdown("---")
 
-# 고정된 메뉴
+# 고정된 메뉴 (Pinned)
 st.sidebar.subheader("📌 바로가기")
 for menu in all_menus:
     if menu in st.session_state.pinned_menus:
@@ -73,7 +74,7 @@ for menu in all_menus:
 
 st.sidebar.markdown("---")
 
-# 전체 메뉴
+# 전체 메뉴 (All)
 st.sidebar.subheader("📂 전체 메뉴")
 for menu in all_menus:
     if menu not in st.session_state.pinned_menus:
@@ -156,7 +157,10 @@ def view_truck_dispatch():
     
     for i, (day, region) in enumerate(days_map.items()):
         with cols[i]:
-            st.error(f"### {day}요일 ({region})") if day=="화" else st.warning(f"### {day}요일 ({region})") if day=="수" else st.success(f"### {day}요일 ({region})")
+            if day == "화": st.error(f"### {day}요일 ({region})")
+            elif day == "수": st.warning(f"### {day}요일 ({region})")
+            else: st.success(f"### {day}요일 ({region})")
+            
             day_trucks = df_trucks[df_trucks['return_day'] == day]
             
             for _, truck in day_trucks.iterrows():
@@ -173,32 +177,32 @@ def view_truck_dispatch():
 def view_help():
     st.title("❓ 시스템 관리 및 연동 가이드")
     
-    st.error("### 🚨 ModuleNotFoundError 해결법 (필독)")
+    st.error("### 🚨 ModuleNotFoundError 해결 체크리스트 (필독)")
     st.markdown("""
-    앱 실행 중 'ModuleNotFoundError: No module named streamlit_gsheets' 오류가 뜬다면 아래를 확인하세요.
+    앱이 실행되지 않고 에러가 발생한다면 GitHub의 **requirements.txt** 파일을 점검해야 합니다.
     
-    **1. GitHub의 requirements.txt 파일 수정**
-    - 아래 내용을 그대로 복사해서 저장하세요 (한 줄이라도 빠지면 안 됩니다).
+    1. **파일명 확인:** `requirement.txt`가 아니라 반드시 **`requirements.txt`**(끝에 **s** 포함)여야 합니다.
+    2. **내용 확인:** 아래 3줄이 오타 없이 정확히 들어있어야 합니다.
     ```text
     streamlit
     pandas
     st-gsheets-connection
     ```
-    - 수정 후 **Commit changes**를 누르면 스트림릿이 알아서 재설치를 시작합니다 (1~2분 소요).
+    3. **위치 확인:** `backhaul.py` 파일과 같은 위치(폴더 안이 아닌 최상위)에 있어야 합니다.
     """)
 
     st.info("### 🔗 구글 시트 연결 (Secrets 설정)")
     st.markdown("""
-    1. **Streamlit Cloud Dashboard** -> 본인 앱의 **Settings** -> **Secrets** 클릭
+    1. **Streamlit Cloud Dashboard** -> 본인 앱 우측의 `...` -> **Settings** -> **Secrets** 클릭
     2. 아래 내용을 입력 (URL은 본인 시트 주소로 교체):
     ```toml
     [connections.gsheets]
     spreadsheet = "[https://docs.google.com/spreadsheets/d/본인_시트_아이디/edit#gid=0](https://docs.google.com/spreadsheets/d/본인_시트_아이디/edit#gid=0)"
     ```
-    3. 시트 상단 **[공유]** 버튼을 눌러 '링크가 있는 모든 사용자'가 '편집자' 권한을 갖도록 설정하세요.
+    3. 시트 상단 **[공유]** 버튼을 눌러 **'링크가 있는 모든 사용자'**가 **'편집자'** 권한을 갖도록 설정하세요.
     """)
 
-# 메인 라우팅
+# 메인 라우팅 (Routing)
 if st.session_state.current_menu == "통합 주문 현황":
     view_unified_orders()
 elif st.session_state.current_menu == "공동구매 전용 관리":
