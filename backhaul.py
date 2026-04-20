@@ -81,12 +81,12 @@ def render_official_header():
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. USDA MyMarketNews API 실시간 연동 엔진 (엄격한 검증 도입)
+# 2. USDA MyMarketNews API 실시간 연동 엔진 (스마트 엑스레이 검증 도입)
 # ==========================================
 def fetch_usda_api_data(manual_id=None):
     """
     USDA MARS API 실시간 호출 로직.
-    - 껍데기(Metadata)가 아닌 진짜 '가격 데이터(/data)'만 성공으로 인정하도록 분리.
+    - '/results' 경로를 복구하고 데이터 알맹이 판별기(X-ray)를 추가하여 껍데기 정보를 걸러냄.
     """
     api_key = st.secrets.get("USDA_API_KEY", "J5v4ZF527NWTsrcMJeB7jrXgfgRyPVzd")
     
@@ -110,10 +110,12 @@ def fetch_usda_api_data(manual_id=None):
 
     target_id = manual_id if manual_id else "aj_py047"
     
-    # 🚨 진짜 알맹이(Data) 경로와 껍데기(Metadata) 경로 분리
+    # 🚨 진짜 알맹이(Data)가 숨어있을 수 있는 모든 상세 경로
     data_urls = [
         f"https://marsapi.ams.usda.gov/services/v1.2/reports/{target_id}/data",
-        f"https://marsapi.ams.usda.gov/services/v1.1/reports/{target_id}/data"
+        f"https://marsapi.ams.usda.gov/services/v1.2/reports/{target_id}/results", # 핵심: results 복구
+        f"https://marsapi.ams.usda.gov/services/v1.1/reports/{target_id}/data",
+        f"https://marsapi.ams.usda.gov/services/v1.1/reports/{target_id}/results"
     ]
     meta_urls = [
         f"https://marsapi.ams.usda.gov/services/v1.2/reports/{target_id}",
@@ -129,21 +131,38 @@ def fetch_usda_api_data(manual_id=None):
     success_url = ""
     status_type = "error" # "success_data", "success_meta", "error"
     
-    # 1. 진짜 알맹이(/data) 먼저 시도
+    # 1. 진짜 알맹이(Data/Results) 집중 탐색
     for url in data_urls:
         try:
             res = requests.get(url, headers=headers, timeout=12)
             if res.status_code == 200:
-                raw_json_data = res.json()
-                success_url = url
-                status_type = "success_data"
-                break
+                temp_json = res.json()
+                
+                # 스마트 엑스레이 검사: 껍데기인지 알맹이인지 Key 값을 뜯어봄
+                is_real_data = False
+                if isinstance(temp_json, dict) and "results" in temp_json and len(temp_json["results"]) > 0:
+                    sample_keys = str(temp_json["results"][0].keys()).lower()
+                    # 가격, 품목, 무게 등 실질적 데이터 키워드가 포함되어 있는지 엑스레이 검사
+                    if any(keyword in sample_keys for keyword in ['price', 'value', 'cost', 'item', 'weight', 'volume', 'cut', 'yield']):
+                        is_real_data = True
+                
+                if is_real_data:
+                    raw_json_data = temp_json
+                    success_url = url
+                    status_type = "success_data"
+                    break # 진짜 알맹이를 찾았으니 즉시 탐색 종료!
+                else:
+                    # 연결은 성공했지만 office_name 같은 껍데기만 줄 경우
+                    raw_json_data = temp_json
+                    success_url = url
+                    status_type = "success_meta" # 임시 저장해두고 더 깊은(/results) 경로 탐색 계속
+                    debug_log.append(f"경고: {url} 접속 성공했으나 알맹이 없음(표지 정보). 다음 경로 탐색 중...")
             else:
-                debug_log.append(f"알맹이 조회 시도 -> URL: {url} | Status: {res.status_code}")
+                debug_log.append(f"조회 시도 -> URL: {url} | Status: {res.status_code}")
         except Exception as e:
-            debug_log.append(f"알맹이 조회 예외 발생 -> {url} | {str(e)}")
+            debug_log.append(f"조회 예외 발생 -> {url} | {str(e)}")
             
-    # 2. 알맹이가 없으면 껍데기(표지)라도 있는지 확인
+    # 2. 알맹이를 끝내 못 찾았을 경우 껍데기라도 있는지 최종 확인
     if status_type == "error":
         for url in meta_urls:
             try:
@@ -153,10 +172,8 @@ def fetch_usda_api_data(manual_id=None):
                     success_url = url
                     status_type = "success_meta"
                     break
-                else:
-                    debug_log.append(f"껍데기 조회 시도 -> URL: {url} | Status: {res.status_code}")
             except Exception as e:
-                debug_log.append(f"껍데기 조회 예외 발생 -> {url} | {str(e)}")
+                pass
 
     st.session_state['api_debug_details'] = debug_log
     
@@ -255,11 +272,11 @@ def view_market_price_comparison():
         st.markdown("### 💻 수신된 실제 Raw Data (알맹이 판별기)")
         
         if status_type == "success_meta":
-            st.error(f"🚨 **[경고] 의미 없는 껍데기 데이터입니다.**\n\n대표님이 말씀하신 대로 `office_name`, `report_title` 등은 가격이 아닌 보고서 표지 정보입니다. 이 리포트 번호({manual_report_id})는 API로 가격을 제공하지 않으므로 폐기해야 합니다. 위 추천 리스트의 `3208`을 테스트해 보세요!")
+            st.error(f"🚨 **[경고] 의미 없는 껍데기 데이터(표지)를 자동으로 걸러냈습니다!**\n\n조회하신 리포트 번호({manual_report_id})는 서버에서 정상 응답은 했으나, `office_name` 등의 껍데기 정보만 주고 실제 가격 정보는 숨겨두었거나 없습니다. 위 추천 리스트에 있는 `3208`을 입력해서 테스트해 보세요!")
             if raw_json: st.json(raw_json)
             
         elif status_type == "success_data":
-            st.success(f"🎯 **[빙고!] 완벽한 알맹이(가격) 데이터를 찾았습니다!**\n\n출처: `{success_url}`\n\n아래 표의 영문 컬럼명(`Price`, `Item_Desc`, `Cut` 등)을 자세히 보세요. 이제 이 진짜 데이터를 가지고 파싱 코드를 짜면 시뮬레이션 데이터를 완벽히 교체할 수 있습니다.")
+            st.success(f"🎯 **[빙고!] 스마트 엑스레이가 완벽한 알맹이(가격) 데이터를 찾아냈습니다!**\n\n출처: `{success_url}`\n\n아래 표의 영문 컬럼명(`Price`, `Item_Desc`, `Cut` 등)을 자세히 보세요. 이제 이 진짜 데이터를 가지고 파싱 코드를 짜면 시뮬레이션 데이터를 완벽히 교체할 수 있습니다.")
             
             if isinstance(raw_json, dict) and "results" in raw_json:
                 real_df = pd.DataFrame(raw_json["results"])
@@ -272,7 +289,7 @@ def view_market_price_comparison():
                 
         elif status_type == "error":
             st.error("해당 번호의 리포트가 USDA 서버에 아예 존재하지 않거나 막혀있습니다.")
-            with st.expander("오류 로그 보기"):
+            with st.expander("서버 오류 로그 상세 보기"):
                 for log in st.session_state.get('api_debug_details', []): st.text(log)
 
     st.markdown("---")
