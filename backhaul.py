@@ -3,18 +3,51 @@ import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 
 # ==========================================
-# 1. 페이지 설정 및 회사 공식 타이틀 적용
+# 1. 페이지 설정 및 회사 공식 스타일 적용
 # ==========================================
-st.set_page_config(page_title="GA GLOBAL LOGISTICS - 백홀 관리 시스템", page_icon="🚚", layout="wide")
+st.set_page_config(
+    page_title="GIANT FOODSYSTEM - 백홀 관리 시스템", 
+    page_icon="🚚", 
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# [스타일] 트럭 대시보드에서 사용하던 CSS 스타일 이식
+st.markdown("""
+<style>
+    .block-container { padding-top: 2rem; }
+    .logo-container {
+        background-color: #f8fafc; 
+        padding: 20px; 
+        border-radius: 12px; 
+        text-align: center; 
+        border: 1px solid #e2e8f0; 
+        margin-bottom: 25px;
+    }
+    .logo-text-giant { color: #E31837; font-weight: 900; }
+    .logo-text-food { color: #000000; font-weight: 900; }
+    .tagline { font-size: 1.08rem; font-weight: 600; color: #475569; margin-top: 5px; }
+</style>
+""", unsafe_allow_html=True)
+
+# 공용 로고 렌더링 함수
+def render_official_logo():
+    st.markdown("""
+    <div class="logo-container">
+        <h1 style="margin: 0; font-size: 3.2rem; font-weight: 900; letter-spacing: -1px;">
+            <span class="logo-text-giant">GIANT</span> <span class="logo-text-food">FOODSYSTEM</span>
+        </h1>
+        <p class="tagline">#1 K-food Distributor in USA</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 # 구글 시트 연결 설정
-# ModuleNotFoundError가 발생하면 requirements.txt에 st-gsheets-connection이 있는지 확인하세요.
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
 except Exception as e:
-    st.error("라이브러리 연결 오류가 발생했습니다. requirements.txt 설정을 확인해주세요.")
+    st.error("라이브러리 연결 오류가 발생했습니다. GitHub의 requirements.txt 설정을 확인해주세요.")
 
-# 데이터 불러오기 함수
+# 데이터 불러오기 함수 (캐시 적용)
 @st.cache_data(ttl=60)
 def load_data():
     try:
@@ -22,7 +55,7 @@ def load_data():
         orders = conn.read(worksheet="Orders")
         trucks = conn.read(worksheet="Trucks")
         return clients, orders, trucks
-    except Exception as e:
+    except Exception:
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
 df_clients, df_orders, df_trucks = load_data()
@@ -55,9 +88,13 @@ def change_menu(menu_name):
 
 all_menus = ["통합 주문 현황", "공동구매 전용 관리", "트럭 배차 현황", "시스템 도움말"]
 
-# 사이드바 상단에 공식 타이틀 배치
-st.sidebar.markdown(f"## 🏢 GA GLOBAL LOGISTICS") 
-st.sidebar.caption("통합 백홀 판매/배차 관리 시스템")
+# 사이드바 상단 타이틀
+st.sidebar.markdown("""
+<h2 style="margin: 0; font-weight: 900;">
+    <span style="color: #E31837;">GIANT</span> <span style="color: #000000;">FOOD</span>
+</h2>
+<p style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Backhaul Management System</p>
+""", unsafe_allow_html=True)
 st.sidebar.markdown("---")
 
 # 고정된 메뉴
@@ -88,7 +125,7 @@ for menu in all_menus:
 # 3. 화면 뷰 1: 통합 주문 현황
 # ==========================================
 def view_unified_orders():
-    st.title("🏢 GA GLOBAL LOGISTICS")
+    render_official_logo()
     st.subheader("📊 통합 주문 현황 (Backhaul Aggregation)")
     st.write("실시간 수요를 집계하여 트럭 매칭 준비를 진행합니다.")
     
@@ -123,7 +160,7 @@ def view_unified_orders():
 # 4. 화면 뷰 2: 공동구매 전용 관리
 # ==========================================
 def view_group_buy():
-    st.title("🏢 GA GLOBAL LOGISTICS")
+    render_official_logo()
     st.subheader("🤝 공동구매 전용 관리")
     
     df_merged = pd.merge(df_orders, df_clients, on="client_id", how="left")
@@ -148,7 +185,7 @@ def view_group_buy():
 # 5. 화면 뷰 3: 트럭 배차 현황
 # ==========================================
 def view_truck_dispatch():
-    st.title("🏢 GA GLOBAL LOGISTICS")
+    render_official_logo()
     st.subheader("🚚 트럭 배차 현황 (Backhaul Dispatch)")
     
     days_map = {"화": "NC_SC", "수": "TX", "금": "FL"}
@@ -156,11 +193,17 @@ def view_truck_dispatch():
     
     for i, (day, region) in enumerate(days_map.items()):
         with cols[i]:
-            st.error(f"### {day}요일 ({region})") if day=="화" else st.warning(f"### {day}요일 ({region})") if day=="수" else st.success(f"### {day}요일 ({region})")
+            if day == "화": st.error(f"### {day}요일 ({region})")
+            elif day == "수": st.warning(f"### {day}요일 ({region})")
+            else: st.success(f"### {day}요일 ({region})")
+            
             day_trucks = df_trucks[df_trucks['return_day'] == day]
             
             for _, truck in day_trucks.iterrows():
-                is_assigned = truck['assigned'] == 1
+                try:
+                    is_assigned = int(truck['assigned']) == 1
+                except:
+                    is_assigned = False
                 status = "✅ 상차 완료" if is_assigned else "🔲 배차 대기"
                 st.markdown(f"**{truck['truck_id']}** ({truck['capacity']} PLT)")
                 st.caption(status)
@@ -171,34 +214,21 @@ def view_truck_dispatch():
 # 6. 화면 뷰 4: 시스템 도움말
 # ==========================================
 def view_help():
-    st.title("❓ 시스템 관리 및 연동 가이드")
+    render_official_logo()
+    st.subheader("❓ 시스템 관리 및 연동 가이드")
     
-    st.error("### 🚨 ModuleNotFoundError 해결법 (필독)")
-    st.markdown("""
-    앱 실행 중 'ModuleNotFoundError: No module named streamlit_gsheets' 오류가 뜬다면 아래를 확인하세요.
-    
-    **1. GitHub의 requirements.txt 파일 수정**
-    - 아래 내용을 그대로 복사해서 저장하세요 (한 줄이라도 빠지면 안 됩니다).
-    ```text
-    streamlit
-    pandas
-    st-gsheets-connection
-    ```
-    - 수정 후 **Commit changes**를 누르면 스트림릿이 알아서 재설치를 시작합니다 (1~2분 소요).
-    """)
-
     st.info("### 🔗 구글 시트 연결 (Secrets 설정)")
     st.markdown("""
-    1. **Streamlit Cloud Dashboard** -> 본인 앱의 **Settings** -> **Secrets** 클릭
+    1. **Streamlit Cloud Dashboard** -> **Settings** -> **Secrets** 클릭
     2. 아래 내용을 입력 (URL은 본인 시트 주소로 교체):
     ```toml
     [connections.gsheets]
     spreadsheet = "[https://docs.google.com/spreadsheets/d/본인_시트_아이디/edit#gid=0](https://docs.google.com/spreadsheets/d/본인_시트_아이디/edit#gid=0)"
     ```
-    3. 시트 상단 **[공유]** 버튼을 눌러 '링크가 있는 모든 사용자'가 '편집자' 권한을 갖도록 설정하세요.
+    3. **파일명 확인:** GitHub의 설정 파일 이름이 반드시 `requirements.txt`여야 라이브러리가 설치됩니다.
     """)
 
-# 메인 라우팅
+# 메인 라우팅 (Routing)
 if st.session_state.current_menu == "통합 주문 현황":
     view_unified_orders()
 elif st.session_state.current_menu == "공동구매 전용 관리":
