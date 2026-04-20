@@ -5,7 +5,6 @@ from streamlit_gsheets import GSheetsConnection
 # ==========================================
 # 1. 페이지 설정 및 회사 공식 타이틀 적용
 # ==========================================
-# page_title 부분에 회사 공식 명칭을 넣으세요.
 st.set_page_config(page_title="GA GLOBAL LOGISTICS - 백홀 관리 시스템", page_icon="🚚", layout="wide")
 
 # 구글 시트 연결 설정
@@ -53,7 +52,7 @@ def change_menu(menu_name):
 all_menus = ["통합 주문 현황", "공동구매 전용 관리", "트럭 배차 현황", "시스템 도움말"]
 
 # 사이드바 상단에 공식 타이틀 배치
-st.sidebar.markdown(f"## 🏢 GA GLOBAL LOGISTICS") # 여기를 회사 이름으로 수정하세요.
+st.sidebar.markdown(f"## 🏢 GA GLOBAL LOGISTICS") 
 st.sidebar.caption("통합 백홀 판매/배차 관리 시스템")
 st.sidebar.markdown("---")
 
@@ -85,13 +84,12 @@ for menu in all_menus:
 # 3. 화면 뷰 1: 통합 주문 현황
 # ==========================================
 def view_unified_orders():
-    # 메인 상단에도 공식 타이틀 표시
     st.title("🏢 GA GLOBAL LOGISTICS")
     st.subheader("📊 통합 주문 현황 (Backhaul Aggregation)")
     st.write("실시간 수요를 집계하여 트럭 매칭 준비를 진행합니다.")
     
     if df_orders.empty:
-        st.warning("데이터를 불러오는 중이거나 Orders 시트가 비어있습니다.")
+        st.warning("데이터를 불러오는 중이거나 구글 시트 연결 설정이 필요합니다.")
         return
 
     try:
@@ -171,12 +169,17 @@ def view_truck_dispatch():
 def view_help():
     st.title("❓ 시스템 관리 및 연동 가이드")
     st.markdown("""
-    ### 🏢 공식 타이틀 변경 방법
-    코드 상단의 `st.set_page_config`와 사이드바의 `st.sidebar.markdown` 부분에서 회사 명칭을 수정할 수 있습니다.
+    ### 🚨 ModuleNotFoundError 발생 시 해결법
+    에러 메시지에 `streamlit_gsheets`가 언급된다면, GitHub의 **requirements.txt** 파일에 아래 3줄이 정확히 있는지 확인하세요.
+    ```text
+    streamlit
+    pandas
+    st-gsheets-connection
+    ```
 
     ### 🔗 구글 시트 연결 (Secrets 설정)
-    1. **Streamlit Settings** -> **Secrets**
-    2. 아래 형식으로 입력:
+    1. **Streamlit Cloud Dashboard** -> **Settings** -> **Secrets**
+    2. 아래 내용 입력 (URL은 본인 시트 주소로 교체):
     ```toml
     [connections.gsheets]
     spreadsheet = "[https://docs.google.com/spreadsheets/d/본인_시트_아이디/edit#gid=0](https://docs.google.com/spreadsheets/d/본인_시트_아이디/edit#gid=0)"
