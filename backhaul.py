@@ -8,8 +8,7 @@ from streamlit_gsheets import GSheetsConnection
 st.set_page_config(page_title="GA GLOBAL LOGISTICS - 백홀 관리 시스템", page_icon="🚚", layout="wide")
 
 # 구글 시트 연결 설정
-# [주의] ModuleNotFoundError가 발생하면 GitHub의 requirements.txt에 
-# st-gsheets-connection 이 정확히 입력되어 있는지 확인해야 합니다.
+# [주의] ModuleNotFoundError 발생 시 GitHub의 'requirements.txt' 파일을 확인하세요.
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
 except Exception as e:
@@ -164,7 +163,7 @@ def view_truck_dispatch():
             day_trucks = df_trucks[df_trucks['return_day'] == day]
             
             for _, truck in day_trucks.iterrows():
-                is_assigned = truck['assigned'] == 1
+                is_assigned = int(truck['assigned']) == 1
                 status = "✅ 상차 완료" if is_assigned else "🔲 배차 대기"
                 st.markdown(f"**{truck['truck_id']}** ({truck['capacity']} PLT)")
                 st.caption(status)
@@ -177,32 +176,31 @@ def view_truck_dispatch():
 def view_help():
     st.title("❓ 시스템 관리 및 연동 가이드")
     
-    st.error("### 🚨 ModuleNotFoundError 해결 체크리스트 (필독)")
+    st.error("### 🚨 ModuleNotFoundError 해결 체크리스트")
     st.markdown("""
-    앱이 실행되지 않고 에러가 발생한다면 GitHub의 **requirements.txt** 파일을 점검해야 합니다.
+    앱 실행 중 라이브러리 오류가 발생한다면 GitHub의 **requirements.txt** 파일을 점검하세요.
     
-    1. **파일명 확인:** `requirement.txt`가 아니라 반드시 **`requirements.txt`**(끝에 **s** 포함)여야 합니다.
-    2. **내용 확인:** 아래 3줄이 오타 없이 정확히 들어있어야 합니다.
+    1. **파일명:** `requirements.txt` (철자 확인)
+    2. **내용:** 아래 3줄 필수
     ```text
     streamlit
     pandas
     st-gsheets-connection
     ```
-    3. **위치 확인:** `backhaul.py` 파일과 같은 위치(폴더 안이 아닌 최상위)에 있어야 합니다.
+    3. **조치:** 수정 후에도 안 된다면 Streamlit Cloud에서 **Reboot App**을 실행하세요.
     """)
 
     st.info("### 🔗 구글 시트 연결 (Secrets 설정)")
     st.markdown("""
-    1. **Streamlit Cloud Dashboard** -> 본인 앱 우측의 `...` -> **Settings** -> **Secrets** 클릭
+    1. **Streamlit Cloud Dashboard** -> **Settings** -> **Secrets** 클릭
     2. 아래 내용을 입력 (URL은 본인 시트 주소로 교체):
     ```toml
     [connections.gsheets]
     spreadsheet = "[https://docs.google.com/spreadsheets/d/본인_시트_아이디/edit#gid=0](https://docs.google.com/spreadsheets/d/본인_시트_아이디/edit#gid=0)"
     ```
-    3. 시트 상단 **[공유]** 버튼을 눌러 **'링크가 있는 모든 사용자'**가 **'편집자'** 권한을 갖도록 설정하세요.
     """)
 
-# 메인 라우팅 (Routing)
+# 메인 라우팅
 if st.session_state.current_menu == "통합 주문 현황":
     view_unified_orders()
 elif st.session_state.current_menu == "공동구매 전용 관리":
