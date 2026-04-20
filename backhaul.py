@@ -192,7 +192,7 @@ def fetch_usda_api_data(manual_id=None):
 
     target_id = manual_id if manual_id else "3646"
     
-    # URL 시도 순서
+    # URL 시도 순서 (데이터 최우선)
     base_urls = [
         f"https://marsapi.ams.usda.gov/services/v1.2/reports/{target_id}/data",
         f"https://marsapi.ams.usda.gov/services/v1.2/reports/{target_id}/results",
@@ -207,7 +207,7 @@ def fetch_usda_api_data(manual_id=None):
     headers = {
         "Authorization": f"Basic {encoded_auth}",
         "Accept": "application/json",
-        "User-Agent": "GiantFoodsystem-Dashboard/3.1"
+        "User-Agent": "GiantFoodsystem-Dashboard/3.2"
     }
     
     last_status = "No Attempt"
@@ -385,32 +385,30 @@ def view_market_price_comparison():
         
     # 개발자를 위한 실제 RAW JSON 뷰어 (숨김 없이 무조건 펼침 상태로 크게 강조)
     if use_live_api:
-        st.markdown("### 💻 실제 리포트 Raw Data (파싱 개발용)")
-        st.info("💡 통신에 성공하여 받아온 실제 데이터 원본입니다. 아래 표의 컬럼명(영어 Key)을 확인하면 파싱 코드를 작성할 수 있습니다.")
+        st.markdown("### 💻 실제 리포트 Raw Data 분석기")
         
         if success_url:
-            st.write(f"✅ **통신 성공 URL:** `{success_url}`")
+            st.write(f"✅ **응답 출처 URL:** `{success_url}`")
+            
+            # URL 끝자리에 따른 상태 판별 로직 추가
+            if success_url.endswith(str(manual_report_id)):
+                st.error("🚨 **[주의] 현재 '보고서 표지(Metadata)' 정보만 수신되었습니다!** 🚨\n\n대표님께서 찾으신 `office_name`, `report_title` 등의 단어들은 가격 정보가 아니라 이 보고서의 표지(껍데기) 정보입니다. USDA 서버가 실제 가격이 들어있는 `/data` 경로를 막아두었거나, 해당 번호의 보고서에는 API 가격 데이터가 제공되지 않습니다.")
+            elif "/data" in success_url or "/results" in success_url:
+                st.success("🎯 **[성공] 실제 '가격 상세 데이터(Data)' 경로 접근에 성공했습니다!** 아래 표에서 가격(Price)이나 아이템(Item) 관련 영문 키워드를 찾아주세요.")
 
         # results 키 내부의 리스트를 추출하여 DataFrame 형태로 깔끔하게 표시
         if isinstance(raw_json, dict) and "results" in raw_json and isinstance(raw_json["results"], list) and len(raw_json["results"]) > 0:
             real_df = pd.DataFrame(raw_json["results"])
             
-            # Report Detail이 섞여있다면 그것만 필터링해서 보여주는 로직
-            if 'reportSection' in real_df.columns:
-                detail_df = real_df[real_df['reportSection'].str.contains('Detail|Data', case=False, na=False)]
-                if not detail_df.empty:
-                    st.success("🎯 **'Report Detail(상세 가격 데이터)' 섹션을 자동으로 찾아 필터링했습니다!**")
-                    real_df = detail_df
-                else:
-                    st.warning("⚠️ 현재 이 보고서에는 'Report Header(표지)' 정보만 수신되었습니다. 가격이 포함된 상세 데이터를 찾지 못했습니다.")
-            
-            st.markdown(f"#### 🔍 데이터 미리보기 (표시 건수: {len(real_df)}건)")
+            st.markdown(f"#### 🔍 수신된 데이터 구조 미리보기 (총 {len(real_df)}개 항목)")
             st.dataframe(real_df, height=300)
             
             # 파싱을 위해 사용 가능한 컬럼명 나열
-            st.markdown("**👇 현재 찾은 진짜 영어 단어(Key) 목록:**")
+            st.markdown("**👇 현재 데이터에 포함된 전체 영어 단어(Key) 목록:**")
             st.code(", ".join(real_df.columns))
-            st.markdown("*이 중에서 가격이나 품목 이름처럼 보이는 단어를 채팅창에 알려주세요!*")
+            
+            if success_url.endswith(str(manual_report_id)):
+                st.markdown("*이 단어들 중에 가격(Price) 관련 단어가 없다면, 이 보고서 번호로는 실시간 시세 연동이 불가능합니다. 다른 번호(예: 2824, 3214 등)를 테스트창에 넣어보세요!*")
         else:
             # results 배열이 없거나 다른 형태일 때 원본 JSON 표시
             st.json(raw_json)
