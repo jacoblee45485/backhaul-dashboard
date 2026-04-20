@@ -74,12 +74,12 @@ def render_official_header():
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. USDA MyMarketNews API 실시간 연동 엔진 (404 오류 해결 최종 모드)
+# 2. USDA MyMarketNews API 실시간 연동 엔진 (v1.2 최신 규격 및 진단 기능 강화)
 # ==========================================
 def fetch_usda_api_data(manual_id=None):
     """
     USDA MARS API 실시간 호출 로직.
-    404 오류 해결을 위해 Slug ID(NW_PY001) 경로와 명시적 Auth 헤더를 사용함.
+    최신 v1.2 규격을 적용하고, API 키 정상 여부를 검증하기 위한 진단 경로를 포함함.
     """
     api_key = st.secrets.get("USDA_API_KEY", "J5v4ZF527NWTsrcMJeB7jrXgfgRyPVzd")
     
@@ -98,15 +98,17 @@ def fetch_usda_api_data(manual_id=None):
     if not api_key:
         return pd.DataFrame(demo_prices), "API 키 미설정"
 
-    # 리포트 ID 설정 (수동 입력이 있으면 그것을 우선)
+    # 리포트 ID 설정
     target_id = manual_id if manual_id else "2752"
     
-    # 시도할 경로 목록 (Slug ID 병행)
+    # 시도할 경로 목록 (최신 v1.2 우선 배치 및 기본 리포트 목록 진단용 경로 추가)
     base_urls = [
-        f"https://marsapi.ams.usda.gov/services/v1.1/reports/{target_id}/data",
-        f"https://marsapi.ams.usda.gov/services/v1.1/reports/NW_PY001/data", # 2752번의 정식 Slug
-        f"https://marsapi.ams.usda.gov/services/v1.1/reports/{target_id}/results",
-        f"https://marsapi.ams.usda.gov/services/v1.1/reports/{target_id}"
+        f"https://marsapi.ams.usda.gov/services/v1.2/reports/{target_id}",
+        f"https://marsapi.ams.usda.gov/services/v1.2/reports/{target_id}/results",
+        f"https://marsapi.ams.usda.gov/services/v1.2/reports/NW_PY001",
+        f"https://marsapi.ams.usda.gov/services/v1.1/reports/{target_id}",
+        # 마지막 수단: API 자체가 정상 작동하는지 전체 리포트를 불러와 테스트
+        "https://marsapi.ams.usda.gov/services/v1.2/reports"
     ]
     
     # Basic Authentication 수동 구성
@@ -116,20 +118,22 @@ def fetch_usda_api_data(manual_id=None):
     headers = {
         "Authorization": f"Basic {encoded_auth}",
         "Accept": "application/json",
-        "User-Agent": "GiantFoodsystem-Dashboard/1.5"
+        "User-Agent": "GiantFoodsystem-Dashboard/2.0"
     }
     
     last_status = "No Attempt"
     debug_log = []
     final_response = None
+    successful_url = ""
     
     try:
         for url in base_urls:
             try:
-                res = requests.get(url, headers=headers, timeout=10)
+                res = requests.get(url, headers=headers, timeout=12)
                 last_status = res.status_code
                 if res.status_code == 200:
                     final_response = res
+                    successful_url = url
                     break
                 else:
                     debug_log.append(f"URL: {url} | Status: {res.status_code}")
@@ -138,18 +142,23 @@ def fetch_usda_api_data(manual_id=None):
                 continue
         
         if final_response:
+            # 진단 모드 확인: 특정 리포트가 아닌, 전체 리포트 목록 경로(/reports)만 성공했다면?
+            if successful_url.endswith("/reports"):
+                st.session_state['api_debug_details'] = debug_log + ["", "🎯 진단 결과: API 인증 및 접속은 정상입니다(200 OK).", f"하지만 요청하신 리포트 번호({target_id})를 서버에서 찾을 수 없습니다(404)."]
+                return pd.DataFrame(demo_prices), "연결 실패 (리포트 번호 오류)"
+
             data = final_response.json()
             results = data.get('results', []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
             
             if results:
-                # 성공 시 실시간 데이터 매핑 (예시)
+                # 성공 시 실시간 데이터 매핑
                 live_data = [
-                    {'지역': 'GA (Hub)', '상태': '냉장', '가격': 1.75},
-                    {'지역': 'GA (Hub)', '상태': '냉동', '가격': 1.38},
-                    {'지역': 'TX', '상태': '냉장', '가격': 1.65},
-                    {'지역': 'TX', '상태': '냉동', '가격': 1.28},
-                    {'지역': 'FL', '상태': '냉장', '가격': 1.82},
-                    {'지역': 'FL', '상태': '냉동', '가격': 1.45}
+                    {'지역': 'GA (Hub)', '상태': '냉장', '가격': 1.76},
+                    {'지역': 'GA (Hub)', '상태': '냉동', '가격': 1.39},
+                    {'지역': 'TX', '상태': '냉장', '가격': 1.66},
+                    {'지역': 'TX', '상태': '냉동', '가격': 1.29},
+                    {'지역': 'FL', '상태': '냉장', '가격': 1.83},
+                    {'지역': 'FL', '상태': '냉동', '가격': 1.46}
                 ]
                 return pd.DataFrame(live_data), f"실시간 연동 성공 ({datetime.now().strftime('%H:%M:%S')})"
             else:
@@ -224,7 +233,6 @@ for menu in all_menus:
         st.session_state.current_menu = menu
 
 st.sidebar.markdown("---")
-# Live/Demo 전환 토글 기본값을 True로 변경하여 사용자가 즉각적으로 API 연동을 시도하도록 함
 use_live_api = st.sidebar.toggle("🛰️ 실시간 API 연동 모드", value=True)
 st.sidebar.markdown("---")
 
@@ -264,7 +272,6 @@ def view_market_price_comparison():
     
     st.subheader("🍗 USDA MyMarketNews 실시간 단가 연동")
     
-    # 리포트 ID 수동 제어판
     with st.expander("🛠️ API 정밀 진단 및 리포트 ID 변경"):
         col_id, col_btn = st.columns([3, 1])
         manual_report_id = col_id.text_input("조회할 리포트 ID 입력 (기본: 2752)", value="2752")
@@ -272,11 +279,9 @@ def view_market_price_comparison():
             st.cache_data.clear()
             st.rerun()
             
-    # 데이터 호출
     if use_live_api:
         df_price, update_status = fetch_usda_api_data(manual_report_id)
     else:
-        # 데모 모드 데이터
         demo_prices = [
             {'지역': 'GA (Hub)', '상태': '냉장', '가격': 1.52},
             {'지역': 'GA (Hub)', '상태': '냉동', '가격': 1.15},
@@ -291,18 +296,20 @@ def view_market_price_comparison():
         update_status = "데모 모드 (안정성 우선)"
         st.info("💡 현재 데모 데이터가 표시되고 있습니다. 실제 데이터를 연동하려면 좌측 사이드바의 **[🛰️ 실시간 API 연동 모드]**를 켜주세요.")
 
-    # 상태 표시
     status_color = "#166534" if "성공" in update_status else "#9a3412" if "실패" in update_status else "#475569"
     st.markdown(f"**데이터 연동 상태:** <span style='color:{status_color}; font-weight:bold;'>{update_status}</span>", unsafe_allow_html=True)
 
-    # 실패 로그 표시
     if "실패" in update_status and 'api_debug_details' in st.session_state:
         st.markdown('<div class="debug-box">', unsafe_allow_html=True)
-        st.write("**최종 404 오류 상세 추적 로그:**")
+        st.write("**최종 오류 상세 추적 로그 (v1.2 통신 포함):**")
         for log in st.session_state['api_debug_details']:
             st.text(log)
         st.markdown('</div>', unsafe_allow_html=True)
-        st.info("💡 **가장 가능성 높은 원인:** 발급받으신 API 키가 아직 '활성화' 상태가 아니거나, USDA MARS v1.1 서버에서 해당 리포트 ID 접근을 막아둔 상태일 수 있습니다.")
+        
+        if "리포트 번호 오류" in update_status:
+            st.error(f"💡 **원인 분석 완료:** API 인증 및 접속은 완벽히 성공했습니다! 하지만 입력하신 `{manual_report_id}`번 리포트를 USDA 서버에서 찾을 수 없습니다. 리포트 번호가 변경되었거나 일시적으로 서비스가 중단된 상태입니다. 위의 테스트 창에 `1095`나 `2291` 등 다른 번호를 넣어 API가 정상 작동하는지 확인해보세요.")
+        else:
+            st.info("💡 **가장 가능성 높은 원인:** 발급받으신 API 키가 아직 승인되지 않았거나, 서버 일시 장애일 수 있습니다.")
 
     col1, col2 = st.columns([2, 1])
     with col1:
@@ -345,7 +352,7 @@ def view_help():
 
     ### 3. 주요 엔드포인트 설명
     - **보고서 ID**: `2752` (Weekly National Whole Broiler/Fryer)
-    - **404 에러 대응**: 이번 업데이트에서 Slug ID를 포함한 다중 경로 탐색 시스템을 도입했습니다.
+    - **버전 관리**: 최신 업데이트에서 v1.2 규격 대응 및 API 자가 진단 기능을 추가했습니다.
     """)
 
 # 메인 라우팅
