@@ -131,7 +131,7 @@ st.sidebar.markdown("""
 """, unsafe_allow_html=True)
 st.sidebar.markdown("---")
 
-# 메뉴 버튼들 (명칭 변경 반영)
+# 메뉴 버튼들
 all_menus = ["통합 주문 현황", "수요자(Customer) 포털", "백홀 파트너(단순물류이송)", "지역별 공급자 파트너", "데이터 통합 관리", "시스템 도움말"]
 for menu in all_menus:
     if st.sidebar.button(menu, key=f"sidebar_{menu}", use_container_width=True):
@@ -146,7 +146,6 @@ if st.sidebar.button("🔄 데이터 새로고침", use_container_width=True):
 st.sidebar.markdown("<br><br>", unsafe_allow_html=True)
 st.sidebar.markdown("### 🔗 시스템 공유하기")
 
-# [중요] 실제 배포된 URL로 수정하세요.
 app_url = "https://giant-backhaul.streamlit.app" 
 qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={app_url}"
 
@@ -209,7 +208,13 @@ def view_customer_portal():
     st.info("고객사별 공동구매 참여 및 배송 상태를 확인합니다.")
     tab1, tab2 = st.tabs(["주문 추적", "공동구매(Group Buy)"])
     with tab1:
-        st.dataframe(df_orders, use_container_width=True)
+        if not df_orders.empty:
+            # 인덱스를 1부터 시작하도록 조정하여 표시
+            display_orders = df_orders.copy()
+            display_orders.index = range(1, len(display_orders) + 1)
+            st.dataframe(display_orders, use_container_width=True)
+        else:
+            st.info("진행 중인 주문이 없습니다.")
     with tab2:
         st.success("대량 공동구매 건: CJ 비비고 만두 (진행률 85%)")
 
@@ -238,7 +243,7 @@ elif st.session_state.current_menu == "수요자(Customer) 포털":
     view_customer_portal()
 elif st.session_state.current_menu == "백홀 파트너(단순물류이송)":
     view_backhaul_matching()
-elif st.session_state.current_menu == "지역별 공급자 파트너": # 명칭 변경 반영
+elif st.session_state.current_menu == "지역별 공급자 파트너":
     view_supplier_search()
 elif st.session_state.current_menu == "데이터 통합 관리":
     view_data_management()
