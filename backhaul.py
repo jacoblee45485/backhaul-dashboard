@@ -391,9 +391,21 @@ def view_market_price_comparison():
         
     # 개발자를 위한 실제 RAW JSON 뷰어 (숨김 없이 무조건 펼침 상태로 크게 강조)
     if use_live_api:
-        st.markdown("### 💻 실제 리포트 Raw JSON (파싱 개발용)")
-        st.info("💡 실제 데이터를 화면에 띄우기 위한 매핑 작업(Parsing)을 하려면, 아래 출력된 데이터 구조를 파악해야 합니다. (통신 실패 시 서버가 보낸 원본 오류 메시지가 그대로 표시됩니다.)")
-        st.json(raw_json)
+        st.markdown("### 💻 실제 리포트 Raw Data (파싱 개발용)")
+        st.info("💡 통신에 성공하여 받아온 실제 데이터 원본입니다. 아래 표의 컬럼명(영어 Key)을 확인하면 파싱 코드를 작성할 수 있습니다.")
+        
+        # results 키 내부의 리스트를 추출하여 DataFrame 형태로 깔끔하게 표시
+        if isinstance(raw_json, dict) and "results" in raw_json and isinstance(raw_json["results"], list) and len(raw_json["results"]) > 0:
+            st.markdown(f"#### 🔍 데이터 미리보기 (총 {len(raw_json['results'])}건)")
+            real_df = pd.DataFrame(raw_json["results"])
+            st.dataframe(real_df, height=300)
+            
+            # 파싱을 위해 사용 가능한 컬럼명 나열
+            st.markdown("**사용 가능한 컬럼명(Key) 목록:**")
+            st.code(", ".join(real_df.columns))
+        else:
+            # results 배열이 없거나 다른 형태일 때 원본 JSON 표시
+            st.json(raw_json)
 
     st.markdown("---")
     
