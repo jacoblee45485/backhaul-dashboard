@@ -36,15 +36,15 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# [수정] 지도가 포함된 공식 헤더 렌더링 함수 (Inline Style 적용으로 안정성 확보)
+# [수정] 지도가 포함된 공식 헤더 렌더링 함수
 def render_official_header():
     # 미국 지도 SVG (조지아 강조)
     ga_map_svg = """
     <svg viewBox="0 0 100 60" width="100" height="60" xmlns="http://www.w3.org/2000/svg">
         <path d="M10,10 L90,10 L90,50 L10,50 Z" fill="#f1f5f9" />
         <path d="M15,15 Q30,10 50,15 T85,15 L85,45 Q60,50 30,45 T15,45 Z" fill="#cbd5e1" />
-        <circle cx="72" cy="38" r="5" fill="#E31837" />
-        <text x="72" y="52" font-size="8" font-weight="bold" fill="#E31837" text-anchor="middle">GA</text>
+        <circle cx="72" cy="38" r="6" fill="#E31837" />
+        <text x="72" y="41" font-size="7" font-weight="900" fill="white" text-anchor="middle">GA</text>
     </svg>
     """
     
@@ -53,14 +53,14 @@ def render_official_header():
     <svg viewBox="0 0 100 60" width="100" height="60" xmlns="http://www.w3.org/2000/svg">
         <path d="M10,10 L90,10 L90,50 L10,50 Z" fill="#f1f5f9" />
         <path d="M15,15 Q30,10 50,15 T85,15 L85,45 Q60,50 30,45 T15,45 Z" fill="#cbd5e1" />
-        <circle cx="80" cy="22" r="5" fill="#E31837" />
-        <text x="80" y="15" font-size="8" font-weight="bold" fill="#E31837" text-anchor="middle">NJ</text>
+        <circle cx="80" cy="22" r="6" fill="#E31837" />
+        <text x="80" y="25" font-size="7" font-weight="900" fill="white" text-anchor="middle">NJ</text>
     </svg>
     """
 
     st.markdown(f"""
     <div style="background-color: #f8fafc; padding: 20px 30px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between;">
-        <div style="text-align: center; width: 120px;">
+        <div style="text-align: center; width: 140px;">
             {ga_map_svg}
             <div style="font-size: 0.75rem; font-weight: 800; color: #0f172a; margin-top: 5px;">GEORGIA (GA)</div>
         </div>
@@ -70,7 +70,7 @@ def render_official_header():
             </h1>
             <p style="font-size: 1.1rem; font-weight: 600; color: #475569; margin: 10px 0 0 0;">#1 K-food Distributor in USA</p>
         </div>
-        <div style="text-align: center; width: 120px;">
+        <div style="text-align: center; width: 140px;">
             {nj_map_svg}
             <div style="font-size: 0.75rem; font-weight: 800; color: #0f172a; margin-top: 5px;">NEW JERSEY (NJ)</div>
         </div>
@@ -195,7 +195,7 @@ for menu in all_menus:
 def view_unified_orders():
     render_official_header()
     
-    # [수정] 주요 지표 요약 (Metric Cards - 3, 4번 포함 4개 보장)
+    # [수정] 주요 지표 요약
     total_orders = len(df_orders)
     total_pallets = df_orders['quantity'].sum() if not df_orders.empty else 0
     pending_trucks = len(df_trucks[df_trucks['assigned'] == 0])
