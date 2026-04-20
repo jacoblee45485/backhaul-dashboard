@@ -389,11 +389,11 @@ def view_market_price_comparison():
             st.text(log)
         st.markdown('</div>', unsafe_allow_html=True)
         
-    # 개발자를 위한 실제 RAW JSON 뷰어 (조건 완화: 스위치가 켜져있으면 무조건 표시)
+    # 개발자를 위한 실제 RAW JSON 뷰어 (숨김 없이 무조건 펼침 상태로 크게 강조)
     if use_live_api:
-        with st.expander(f"💻 실제 {manual_report_id}번 리포트 Raw Data (파싱 개발용)", expanded=False):
-            st.info("실제 데이터를 화면에 띄우기 위한 매핑 작업(Parsing)을 하려면, 아래 출력된 데이터 구조를 파악해야 합니다. (실패 시 서버의 오류 메시지가 표시됩니다.)")
-            st.json(raw_json)
+        st.markdown("### 💻 실제 리포트 Raw JSON (파싱 개발용)")
+        st.info("💡 실제 데이터를 화면에 띄우기 위한 매핑 작업(Parsing)을 하려면, 아래 출력된 데이터 구조를 파악해야 합니다. (통신 실패 시 서버가 보낸 원본 오류 메시지가 그대로 표시됩니다.)")
+        st.json(raw_json)
 
     st.markdown("---")
     
