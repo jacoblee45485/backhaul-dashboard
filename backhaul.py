@@ -363,6 +363,9 @@ def view_market_price_comparison():
     with st.expander("🛠️ API 통신 테스트 및 리포트 ID 설정 (개발자용)"):
         col_id, col_btn = st.columns([3, 1])
         manual_report_id = col_id.text_input("통신 테스트용 리포트 ID 입력 (기본: 3646)", value="3646")
+        
+        st.markdown("🔗 **[USDA MyMarketNews 포털 바로가기](https://mymarketnews.ams.usda.gov/)** (여기서 검색하여 리포트 번호나 Slug ID를 찾으세요!)")
+        
         if col_btn.button("API 통신 테스트", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
@@ -383,7 +386,7 @@ def view_market_price_comparison():
             st.text(log)
         st.markdown('</div>', unsafe_allow_html=True)
         
-    # 개발자를 위한 실제 RAW JSON 뷰어 (숨김 없이 무조건 펼침 상태로 크게 강조)
+    # 개발자를 위한 실제 RAW JSON 뷰어
     if use_live_api:
         st.markdown("### 💻 실제 리포트 Raw Data 분석기")
         
@@ -408,7 +411,7 @@ def view_market_price_comparison():
             st.code(", ".join(real_df.columns))
             
             if success_url.endswith(str(manual_report_id)):
-                st.markdown("*이 단어들 중에 가격(Price) 관련 단어가 없다면, 이 보고서 번호로는 실시간 시세 연동이 불가능합니다. 다른 번호(예: 2824, 3214 등)를 테스트창에 넣어보세요!*")
+                st.markdown("*이 단어들 중에 가격(Price) 관련 단어가 없다면, 이 보고서 번호로는 실시간 시세 연동이 불가능합니다. 포털 사이트에서 다른 번호나 Slug ID를 찾아 넣어보세요!*")
         else:
             # results 배열이 없거나 다른 형태일 때 원본 JSON 표시
             st.json(raw_json)
@@ -502,66 +505,4 @@ def view_market_price_comparison():
                                    f"현재 {selected_region} 지역의 냉동 가슴살 단가는 **${breast_price}**, 다리살은 **${thigh_price}**입니다. (차이: **${diff}/LB**)\n\n"
                                    f"가성비가 높은 다리살 위주의 프로모션을 기획하면 B2B 대량 수요를 견인할 수 있습니다.")
                     elif "새우" in analyze_item:
-                        white_price = filtered_df_region[(filtered_df_region['부위'].str.contains('흰다리')) & (filtered_df_region['상태']=='냉동')]['가격'].values[0]
-                        tiger_price = filtered_df_region[(filtered_df_region['부위'].str.contains('타이거')) & (filtered_df_region['상태']=='냉동')]['가격'].values[0]
-                        diff = round(tiger_price - white_price, 2)
-                        st.success(f"**품종별 타겟 세분화 (예시)**\n\n"
-                                   f"현재 {selected_region} 지역의 냉동 블랙타이거 단가는 **${tiger_price}**, 흰다리새우는 **${white_price}**입니다. (차이: **${diff}/LB**)\n\n"
-                                   f"대중적인 메뉴에는 흰다리새우를, 프리미엄 메뉴 거래처에는 블랙타이거를 분리 제안하세요.")
-                    elif "돼지고기" in analyze_item or "삼겹살" in analyze_item or "무기후지" in analyze_item:
-                        if "무기후지" in filtered_df_region['부위'].values.tolist() or "일반 삼겹살(Belly)" in filtered_df_region['부위'].values.tolist():
-                            mugi_price = filtered_df_region[(filtered_df_region['부위'].str.contains('무기후지')) & (filtered_df_region['상태']=='냉동')]['가격'].values[0]
-                            normal_price = filtered_df_region[(filtered_df_region['부위'].str.contains('일반 삼겹살')) & (filtered_df_region['상태']=='냉동')]['가격'].values[0]
-                            diff = round(mugi_price - normal_price, 2)
-                            
-                            st.success(f"**프리미엄 K-BBQ 메뉴 제안 (예시)**\n\n"
-                                       f"현재 {selected_region} 지역의 냉동 무기후지 삼겹살 단가는 **${mugi_price}**, 일반 삼겹살은 **${normal_price}**입니다. (차이: **${diff}/LB**)\n\n"
-                                       f"일반 삼겹살을 주력 물량으로 운영하되, 할당받은 무기후지를 VVIP 프리미엄 식당 라인업에 제안하여 객단가를 높여보세요.")
-                        else:
-                            st.info("돼지고기 세부 데이터를 분석 중입니다...")
-                    elif "소고기" in analyze_item:
-                        ribeye_price = filtered_df_region[(filtered_df_region['부위'].str.contains('립아이')) & (filtered_df_region['상태']=='냉동')]['가격'].values[0]
-                        brisket_price = filtered_df_region[(filtered_df_region['부위'].str.contains('브리스킷')) & (filtered_df_region['상태']=='냉동')]['가격'].values[0]
-                        diff = round(ribeye_price - brisket_price, 2)
-                        st.success(f"**소고기 부위별 매칭 전략 (예시)**\n\n"
-                                   f"현재 {selected_region} 지역의 냉동 립아이 단가는 **${ribeye_price}**, 브리스킷은 **${brisket_price}**입니다. (차이: **${diff}/LB**)\n\n"
-                                   f"텍사스 BBQ 수요가 높은 브리스킷을 주력 물량으로 확보하고, 프리미엄 스테이크용 립아이를 세트로 구성하여 수익성을 높이세요.")
-                except Exception as e:
-                    st.info("상세 차익 분석 데이터를 확인 중입니다...")
-
-def view_customer_portal():
-    render_official_header()
-    st.subheader("👤 수요자(Customer) 포털")
-    if not df_orders.empty:
-        display_df = df_orders.copy()
-        display_df.index = range(1, len(display_df) + 1)
-        st.dataframe(display_df, use_container_width=True)
-    else:
-        st.info("진행 중인 주문이 없습니다.")
-
-def view_help():
-    render_official_header()
-    st.subheader("📖 USDA MyMarketNews API 가이드 (한글)")
-    st.markdown("""
-    ### 1. 개요
-    본 시스템은 향후 미국 농무부(USDA) API를 연동하여 실제 데이터를 가져오기 위한 뼈대(UI/UX)입니다. 
-    현재는 **분석 로직과 시각화를 검증하기 위한 시뮬레이션 모드**로 동작합니다.
-
-    ### 2. 실제 데이터 연동을 위한 향후 과제
-    - **품목별 리포트 ID 발굴**: 닭고기(3646) 외에 소고기, 돼지고기, 해산물에 대한 정확한 USDA 리포트 번호 파악이 필요합니다.
-    - **JSON 파싱 로직 개발**: 각 리포트의 고유한 JSON 데이터 구조에서 특정 부위(예: 삼겹살, 립아이)의 단가를 발라내는 코드를 개별적으로 작성해야 합니다.
-    - **할당(Allocation) 품목 처리**: 무기후지처럼 공시되지 않는 프리미엄 브랜드육은 벤더에서 제공하는 별도의 단가표(Excel/API)를 연동하는 시스템이 추가로 구축되어야 합니다.
-    """)
-
-# 메인 라우팅
-if st.session_state.current_menu == "통합 주문 현황":
-    view_unified_orders()
-elif st.session_state.current_menu == "수요자(Customer) 포털":
-    view_customer_portal()
-elif st.session_state.current_menu == "품목별 시장가 비교":
-    view_market_price_comparison()
-elif st.session_state.current_menu == "데이터 통합 관리":
-    st.subheader("⚙️ 데이터 관리")
-    st.data_editor(df_orders, use_container_width=True)
-elif st.session_state.current_menu == "시스템 도움말":
-    view_help()
+                        white_price = filtered_df_region[(filtered_df_region['
