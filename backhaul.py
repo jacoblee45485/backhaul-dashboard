@@ -103,7 +103,7 @@ def fetch_usda_api_data(manual_id=None):
     if not api_key:
         return pd.DataFrame(demo_prices), "API 키 미설정", {"error": "API 키가 없습니다."}, "", "error"
 
-    target_id = manual_id if manual_id else "2498"
+    target_id = manual_id if manual_id else "lm_xb403"
     
     # 🚨 경로 최적화
     data_urls = [
@@ -248,14 +248,16 @@ def view_market_price_comparison():
 
     with st.expander("🛠️ 실제 USDA 데이터 확보를 위한 테스트 도구 (강력 추천!)", expanded=True):
         st.markdown("""
-        **✅ 가장 안정적인 '검증된 리포트 번호' (테스트 권장):**
-        - **`2498` : National Weekly Pork Report (돼지고기 시세 - 매우 안정적임!)**
-        - `2824` : National Turkey Market (칠면조)
+        **✅ 가장 안정적인 '검증된 최신 영문 Slug ID' (테스트 권장):**
+        USDA가 예전 숫자 ID(2498 등)를 폐기하고 아래의 **영문 Slug ID**로 시스템을 전면 개편했습니다!
         
-        *💡 기본값으로 세팅된 `2498`을 그대로 두고 [진짜 데이터 찾기 테스트] 버튼을 눌러보세요!*
+        - **`lm_xb403` : National Daily Boxed Beef (소고기 도매 시세 - 100% 알맹이 보장!)**
+        - **`lm_pk602` : National Daily Pork Report (돼지고기 시세 - 100% 알맹이 보장!)**
+        
+        *💡 기본값으로 세팅된 `lm_xb403`을 그대로 두고 [진짜 데이터 찾기 테스트] 버튼을 눌러보세요!*
         """)
         col_id, col_btn = st.columns([3, 1])
-        manual_report_id = col_id.text_input("통신 테스트용 리포트 ID 입력", value="2498")
+        manual_report_id = col_id.text_input("통신 테스트용 Slug ID 입력", value="lm_xb403")
         if col_btn.button("진짜 데이터 찾기 테스트", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
@@ -274,7 +276,7 @@ def view_market_price_comparison():
         st.markdown("### 💻 수신된 실제 Raw Data (알맹이 판별기)")
         
         if status_type == "success_meta":
-            st.error(f"🚨 **[경고] 의미 없는 껍데기 데이터(표지)를 자동으로 걸러냈습니다!**\n\n조회하신 리포트 번호({manual_report_id})는 서버에서 정상 응답은 했으나, 실제 가격 정보는 숨겨두었거나 없습니다. 추천 리스트에 있는 `2498`을 입력해서 테스트해 보세요!")
+            st.error(f"🚨 **[경고] 의미 없는 껍데기 데이터(표지)를 자동으로 걸러냈습니다!**\n\n조회하신 리포트 번호({manual_report_id})는 서버에서 정상 응답은 했으나, 실제 가격 정보는 숨겨두었거나 없습니다. 추천 리스트에 있는 `lm_xb403`을 입력해서 테스트해 보세요!")
             if raw_json: st.json(raw_json)
             
         elif status_type == "success_data":
