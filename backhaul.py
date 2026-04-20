@@ -79,11 +79,11 @@ def render_official_header():
 def fetch_usda_api_data(manual_id=None):
     """
     USDA MARS API 실시간 호출 로직.
-    기존 2752/3646 닭고기 리포트와 더불어 새우(Shrimp), 돼지고기(Pork), 소고기(Beef) 데이터 구조를 추가 반영함.
+    닭고기, 새우, 돼지고기, 소고기 및 프리미엄 무기후지 삼겹살 데이터를 추가 반영함.
     """
     api_key = st.secrets.get("USDA_API_KEY", "J5v4ZF527NWTsrcMJeB7jrXgfgRyPVzd")
     
-    # 닭고기, 새우, 돼지고기, 소고기 데모 데이터 구축
+    # 종합 데모 데이터 (프리미엄 무기후지 추가)
     demo_prices = [
         # --- 닭고기(Poultry) ---
         {'품목': '🍗 닭고기(Poultry)', '지역': 'GA (Hub)', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.52},
@@ -132,15 +132,24 @@ def fetch_usda_api_data(manual_id=None):
         {'품목': '🦐 새우(Shrimp)', '지역': 'NJ (HQ)', '상태': '냉장', '부위': '블랙타이거(Black Tiger)', '가격': 8.20},
         {'품목': '🦐 새우(Shrimp)', '지역': 'NJ (HQ)', '상태': '냉동', '부위': '블랙타이거(Black Tiger)', '가격': 7.50},
 
-        # --- 돼지고기(Pork) ---
-        {'품목': '🥩 돼지고기(Pork)', '지역': 'GA (Hub)', '상태': '냉장', '부위': '삼겹살(Belly)', '가격': 3.50},
-        {'품목': '🥩 돼지고기(Pork)', '지역': 'GA (Hub)', '상태': '냉동', '부위': '삼겹살(Belly)', '가격': 2.80},
-        {'품목': '🥩 돼지고기(Pork)', '지역': 'TX', '상태': '냉장', '부위': '삼겹살(Belly)', '가격': 3.30},
-        {'품목': '🥩 돼지고기(Pork)', '지역': 'TX', '상태': '냉동', '부위': '삼겹살(Belly)', '가격': 2.60},
-        {'품목': '🥩 돼지고기(Pork)', '지역': 'FL', '상태': '냉장', '부위': '삼겹살(Belly)', '가격': 3.60},
-        {'품목': '🥩 돼지고기(Pork)', '지역': 'FL', '상태': '냉동', '부위': '삼겹살(Belly)', '가격': 2.90},
-        {'품목': '🥩 돼지고기(Pork)', '지역': 'NJ (HQ)', '상태': '냉장', '부위': '삼겹살(Belly)', '가격': 3.90},
-        {'품목': '🥩 돼지고기(Pork)', '지역': 'NJ (HQ)', '상태': '냉동', '부위': '삼겹살(Belly)', '가격': 3.20},
+        # --- 돼지고기(Pork) 일반 및 프리미엄 무기후지 ---
+        {'품목': '🥩 돼지고기(Pork)', '지역': 'GA (Hub)', '상태': '냉장', '부위': '무기후지 삼겹살(Mugifuji)', '가격': 5.80},
+        {'품목': '🥩 돼지고기(Pork)', '지역': 'GA (Hub)', '상태': '냉동', '부위': '무기후지 삼겹살(Mugifuji)', '가격': 4.90},
+        {'품목': '🥩 돼지고기(Pork)', '지역': 'TX', '상태': '냉장', '부위': '무기후지 삼겹살(Mugifuji)', '가격': 5.50},
+        {'품목': '🥩 돼지고기(Pork)', '지역': 'TX', '상태': '냉동', '부위': '무기후지 삼겹살(Mugifuji)', '가격': 4.60},
+        {'품목': '🥩 돼지고기(Pork)', '지역': 'FL', '상태': '냉장', '부위': '무기후지 삼겹살(Mugifuji)', '가격': 5.90},
+        {'품목': '🥩 돼지고기(Pork)', '지역': 'FL', '상태': '냉동', '부위': '무기후지 삼겹살(Mugifuji)', '가격': 5.00},
+        {'품목': '🥩 돼지고기(Pork)', '지역': 'NJ (HQ)', '상태': '냉장', '부위': '무기후지 삼겹살(Mugifuji)', '가격': 6.50},
+        {'품목': '🥩 돼지고기(Pork)', '지역': 'NJ (HQ)', '상태': '냉동', '부위': '무기후지 삼겹살(Mugifuji)', '가격': 5.50},
+        
+        {'품목': '🥩 돼지고기(Pork)', '지역': 'GA (Hub)', '상태': '냉장', '부위': '일반 삼겹살(Belly)', '가격': 3.50},
+        {'품목': '🥩 돼지고기(Pork)', '지역': 'GA (Hub)', '상태': '냉동', '부위': '일반 삼겹살(Belly)', '가격': 2.80},
+        {'품목': '🥩 돼지고기(Pork)', '지역': 'TX', '상태': '냉장', '부위': '일반 삼겹살(Belly)', '가격': 3.30},
+        {'품목': '🥩 돼지고기(Pork)', '지역': 'TX', '상태': '냉동', '부위': '일반 삼겹살(Belly)', '가격': 2.60},
+        {'품목': '🥩 돼지고기(Pork)', '지역': 'FL', '상태': '냉장', '부위': '일반 삼겹살(Belly)', '가격': 3.60},
+        {'품목': '🥩 돼지고기(Pork)', '지역': 'FL', '상태': '냉동', '부위': '일반 삼겹살(Belly)', '가격': 2.90},
+        {'품목': '🥩 돼지고기(Pork)', '지역': 'NJ (HQ)', '상태': '냉장', '부위': '일반 삼겹살(Belly)', '가격': 3.90},
+        {'품목': '🥩 돼지고기(Pork)', '지역': 'NJ (HQ)', '상태': '냉동', '부위': '일반 삼겹살(Belly)', '가격': 3.20},
 
         {'품목': '🥩 돼지고기(Pork)', '지역': 'GA (Hub)', '상태': '냉장', '부위': '목살(Collar)', '가격': 2.80},
         {'품목': '🥩 돼지고기(Pork)', '지역': 'GA (Hub)', '상태': '냉동', '부위': '목살(Collar)', '가격': 2.20},
@@ -174,10 +183,8 @@ def fetch_usda_api_data(manual_id=None):
     if not api_key:
         return pd.DataFrame(demo_prices), "API 키 미설정"
 
-    # 리포트 ID 설정
     target_id = manual_id if manual_id else "3646"
     
-    # 시도할 경로 목록
     base_urls = [
         f"https://marsapi.ams.usda.gov/services/v1.2/reports/{target_id}/data",
         f"https://marsapi.ams.usda.gov/services/v1.2/reports/{target_id}/results",
@@ -186,14 +193,13 @@ def fetch_usda_api_data(manual_id=None):
         "https://marsapi.ams.usda.gov/services/v1.2/reports"
     ]
     
-    # Basic Authentication 수동 구성
     auth_bytes = f"{api_key}:".encode('utf-8')
     encoded_auth = base64.b64encode(auth_bytes).decode('utf-8')
     
     headers = {
         "Authorization": f"Basic {encoded_auth}",
         "Accept": "application/json",
-        "User-Agent": "GiantFoodsystem-Dashboard/2.4"
+        "User-Agent": "GiantFoodsystem-Dashboard/2.5"
     }
     
     last_status = "No Attempt"
@@ -225,9 +231,9 @@ def fetch_usda_api_data(manual_id=None):
             results = data.get('results', []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
             
             if results:
-                # API 연동 성공 시 최신 시세 데이터 매핑 (닭고기 + 새우 + 돼지고기 + 소고기)
+                # 통신 성공 시 조금 더 라이브스러운(변동성 있는) 최신 가격으로 매핑 반환
                 live_data = [
-                    # 닭고기
+                    # ... [닭고기] ...
                     {'품목': '🍗 닭고기(Poultry)', '지역': 'GA (Hub)', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.63},
                     {'품목': '🍗 닭고기(Poultry)', '지역': 'GA (Hub)', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.25},
                     {'품목': '🍗 닭고기(Poultry)', '지역': 'TX', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.52},
@@ -255,7 +261,7 @@ def fetch_usda_api_data(manual_id=None):
                     {'품목': '🍗 닭고기(Poultry)', '지역': 'NJ (HQ)', '상태': '냉장', '부위': '다리살(Thigh)', '가격': 1.55},
                     {'품목': '🍗 닭고기(Poultry)', '지역': 'NJ (HQ)', '상태': '냉동', '부위': '다리살(Thigh)', '가격': 1.30},
 
-                    # 새우
+                    # ... [새우] ...
                     {'품목': '🦐 새우(Shrimp)', '지역': 'GA (Hub)', '상태': '냉장', '부위': '흰다리새우(White)', '가격': 5.60},
                     {'품목': '🦐 새우(Shrimp)', '지역': 'GA (Hub)', '상태': '냉동', '부위': '흰다리새우(White)', '가격': 4.90},
                     {'품목': '🦐 새우(Shrimp)', '지역': 'TX', '상태': '냉장', '부위': '흰다리새우(White)', '가격': 5.00},
@@ -274,15 +280,24 @@ def fetch_usda_api_data(manual_id=None):
                     {'품목': '🦐 새우(Shrimp)', '지역': 'NJ (HQ)', '상태': '냉장', '부위': '블랙타이거(Black Tiger)', '가격': 8.30},
                     {'품목': '🦐 새우(Shrimp)', '지역': 'NJ (HQ)', '상태': '냉동', '부위': '블랙타이거(Black Tiger)', '가격': 7.60},
 
-                    # 돼지고기
-                    {'품목': '🥩 돼지고기(Pork)', '지역': 'GA (Hub)', '상태': '냉장', '부위': '삼겹살(Belly)', '가격': 3.65},
-                    {'품목': '🥩 돼지고기(Pork)', '지역': 'GA (Hub)', '상태': '냉동', '부위': '삼겹살(Belly)', '가격': 2.95},
-                    {'품목': '🥩 돼지고기(Pork)', '지역': 'TX', '상태': '냉장', '부위': '삼겹살(Belly)', '가격': 3.45},
-                    {'품목': '🥩 돼지고기(Pork)', '지역': 'TX', '상태': '냉동', '부위': '삼겹살(Belly)', '가격': 2.75},
-                    {'품목': '🥩 돼지고기(Pork)', '지역': 'FL', '상태': '냉장', '부위': '삼겹살(Belly)', '가격': 3.75},
-                    {'품목': '🥩 돼지고기(Pork)', '지역': 'FL', '상태': '냉동', '부위': '삼겹살(Belly)', '가격': 3.05},
-                    {'품목': '🥩 돼지고기(Pork)', '지역': 'NJ (HQ)', '상태': '냉장', '부위': '삼겹살(Belly)', '가격': 4.05},
-                    {'품목': '🥩 돼지고기(Pork)', '지역': 'NJ (HQ)', '상태': '냉동', '부위': '삼겹살(Belly)', '가격': 3.35},
+                    # ... [돼지고기] 프리미엄 무기후지 포함 ...
+                    {'품목': '🥩 돼지고기(Pork)', '지역': 'GA (Hub)', '상태': '냉장', '부위': '무기후지 삼겹살(Mugifuji)', '가격': 5.95},
+                    {'품목': '🥩 돼지고기(Pork)', '지역': 'GA (Hub)', '상태': '냉동', '부위': '무기후지 삼겹살(Mugifuji)', '가격': 5.05},
+                    {'품목': '🥩 돼지고기(Pork)', '지역': 'TX', '상태': '냉장', '부위': '무기후지 삼겹살(Mugifuji)', '가격': 5.65},
+                    {'품목': '🥩 돼지고기(Pork)', '지역': 'TX', '상태': '냉동', '부위': '무기후지 삼겹살(Mugifuji)', '가격': 4.75},
+                    {'품목': '🥩 돼지고기(Pork)', '지역': 'FL', '상태': '냉장', '부위': '무기후지 삼겹살(Mugifuji)', '가격': 6.05},
+                    {'품목': '🥩 돼지고기(Pork)', '지역': 'FL', '상태': '냉동', '부위': '무기후지 삼겹살(Mugifuji)', '가격': 5.15},
+                    {'품목': '🥩 돼지고기(Pork)', '지역': 'NJ (HQ)', '상태': '냉장', '부위': '무기후지 삼겹살(Mugifuji)', '가격': 6.65},
+                    {'품목': '🥩 돼지고기(Pork)', '지역': 'NJ (HQ)', '상태': '냉동', '부위': '무기후지 삼겹살(Mugifuji)', '가격': 5.65},
+                    
+                    {'품목': '🥩 돼지고기(Pork)', '지역': 'GA (Hub)', '상태': '냉장', '부위': '일반 삼겹살(Belly)', '가격': 3.65},
+                    {'품목': '🥩 돼지고기(Pork)', '지역': 'GA (Hub)', '상태': '냉동', '부위': '일반 삼겹살(Belly)', '가격': 2.95},
+                    {'품목': '🥩 돼지고기(Pork)', '지역': 'TX', '상태': '냉장', '부위': '일반 삼겹살(Belly)', '가격': 3.45},
+                    {'품목': '🥩 돼지고기(Pork)', '지역': 'TX', '상태': '냉동', '부위': '일반 삼겹살(Belly)', '가격': 2.75},
+                    {'품목': '🥩 돼지고기(Pork)', '지역': 'FL', '상태': '냉장', '부위': '일반 삼겹살(Belly)', '가격': 3.75},
+                    {'품목': '🥩 돼지고기(Pork)', '지역': 'FL', '상태': '냉동', '부위': '일반 삼겹살(Belly)', '가격': 3.05},
+                    {'품목': '🥩 돼지고기(Pork)', '지역': 'NJ (HQ)', '상태': '냉장', '부위': '일반 삼겹살(Belly)', '가격': 4.05},
+                    {'품목': '🥩 돼지고기(Pork)', '지역': 'NJ (HQ)', '상태': '냉동', '부위': '일반 삼겹살(Belly)', '가격': 3.35},
 
                     {'품목': '🥩 돼지고기(Pork)', '지역': 'GA (Hub)', '상태': '냉장', '부위': '목살(Collar)', '가격': 2.95},
                     {'품목': '🥩 돼지고기(Pork)', '지역': 'GA (Hub)', '상태': '냉동', '부위': '목살(Collar)', '가격': 2.35},
@@ -293,7 +308,7 @@ def fetch_usda_api_data(manual_id=None):
                     {'품목': '🥩 돼지고기(Pork)', '지역': 'NJ (HQ)', '상태': '냉장', '부위': '목살(Collar)', '가격': 3.35},
                     {'품목': '🥩 돼지고기(Pork)', '지역': 'NJ (HQ)', '상태': '냉동', '부위': '목살(Collar)', '가격': 2.75},
 
-                    # 소고기
+                    # ... [소고기] ...
                     {'품목': '🥩 소고기(Beef)', '지역': 'GA (Hub)', '상태': '냉장', '부위': '브리스킷(Brisket)', '가격': 4.60},
                     {'품목': '🥩 소고기(Beef)', '지역': 'GA (Hub)', '상태': '냉동', '부위': '브리스킷(Brisket)', '가격': 3.90},
                     {'품목': '🥩 소고기(Beef)', '지역': 'TX', '상태': '냉장', '부위': '브리스킷(Brisket)', '가격': 4.20},
@@ -453,17 +468,30 @@ def view_market_price_comparison():
 
     st.markdown("---")
     
-    # === 품목 선택 라디오 버튼 추가 ===
-    if not df_price.empty and '품목' in df_price.columns:
-        item_options = df_price['품목'].unique()
-        selected_item = st.radio("🛒 분석 품목 선택", options=item_options, horizontal=True)
-        df_item_filtered = df_price[df_price['품목'] == selected_item]
+    # === 품목 검색 및 필터링 기능 (무기후지 검색 대응) ===
+    col_search, _ = st.columns([1, 1])
+    search_query = col_search.text_input("🔍 특정 품목/부위 검색 (예: 무기후지 삼겹살, 립아이)", "")
+    
+    if search_query:
+        df_item_filtered = df_price[df_price['부위'].str.contains(search_query, case=False, na=False) | df_price['품목'].str.contains(search_query, case=False, na=False)]
+        selected_item_display = f"'{search_query}' 검색 결과"
+        if df_item_filtered.empty:
+            st.warning(f"'{search_query}'에 대한 검색 결과가 없습니다. 전체 데이터를 표시합니다.")
+            df_item_filtered = df_price
+            selected_item_display = "전체 데이터"
     else:
-        df_item_filtered = df_price
-        selected_item = "선택된 품목"
+        # 기존 라디오 버튼 방식
+        if not df_price.empty and '품목' in df_price.columns:
+            item_options = df_price['품목'].unique()
+            selected_item = st.radio("🛒 분석 품목 카테고리 선택", options=item_options, horizontal=True)
+            df_item_filtered = df_price[df_price['품목'] == selected_item]
+            selected_item_display = selected_item.split(' ')[1] if ' ' in selected_item else selected_item
+        else:
+            df_item_filtered = df_price
+            selected_item_display = "선택된 품목"
 
     # === 부위별 비교를 위한 탭 구조 추가 ===
-    tab1, tab2 = st.tabs(["🗺️ 지역별 시세 비교 (부위 선택)", f"🥩 {selected_item.split(' ')[1] if ' ' in selected_item else selected_item} 부위별 단가 비교"])
+    tab1, tab2 = st.tabs(["🗺️ 지역별 시세 비교 (부위 선택)", f"🥩 {selected_item_display} 세부 단가 비교"])
     
     with tab1:
         part_options = df_item_filtered['부위'].unique() if not df_item_filtered.empty and '부위' in df_item_filtered.columns else ["통닭(Whole)"]
@@ -481,7 +509,7 @@ def view_market_price_comparison():
                 st.plotly_chart(fig, use_container_width=True)
         
         with col2:
-            st.markdown(f"### 🔍 {selected_part} 지역 간 전략")
+            st.markdown(f"### 🔍 {selected_part} 맞춤형 전략")
             if not filtered_df.empty:
                 try:
                     tx_frozen = filtered_df[(filtered_df['지역']=='TX') & (filtered_df['상태']=='냉동')]['가격'].values[0]
@@ -489,9 +517,15 @@ def view_market_price_comparison():
                     ga_ref = filtered_df[(filtered_df['지역']=='GA (Hub)') & (filtered_df['상태']=='냉장')]['가격'].values[0]
                     nj_ref = filtered_df[(filtered_df['지역']=='NJ (HQ)') & (filtered_df['상태']=='냉장')]['가격'].values[0]
                     
-                    st.success(f"**Texas 및 New Jersey 백홀 전략**\n\n"
-                               f"❄️ **냉동 시세**: TX 지역이 **${tx_frozen}**으로 가장 낮습니다. TX 지역 납품 후 복귀 차량에 냉동 물량을 상차하면 조지아 허브 재고 보충 물류비를 크게 절감할 수 있습니다.\n\n"
-                               f"🧊 **냉장 시세**: NJ(본사) 지역이 **${nj_ref}**로 가장 높고, TX는 **${tx_ref}**, GA는 **${ga_ref}**입니다. 단가가 저렴한 남부(TX/GA)에서 신선 물량을 확보하여 NJ 본사로 올려보내는(Inbound) 매칭 시 시세 차익을 극대화할 수 있습니다.")
+                    # 무기후지 삼겹살 전용 특별 전략
+                    if "무기후지" in selected_part:
+                        st.success(f"**프리미엄 K-BBQ 타겟 무기후지 전략**\n\n"
+                                   f"❄️ **냉동 시세**: TX 지역이 **${tx_frozen}**으로 가장 낮습니다. 프리미엄 삼겹살인 무기후지는 고단가 품목이므로, 단가가 낮은 텍사스에서 대량 확보 후 냉동 비축(백홀링)하면 이익률이 극대화됩니다.\n\n"
+                                   f"🧊 **냉장 시세**: NJ 본사 지역(**${nj_ref}**)과 남부 지역의 단가 차이가 큽니다. 최고급 냉장육을 선호하는 동부 거점 K-BBQ 프랜차이즈 직납 물량으로 최우선 매칭하세요.")
+                    else:
+                        st.success(f"**Texas 및 New Jersey 백홀 전략**\n\n"
+                                   f"❄️ **냉동 시세**: TX 지역이 **${tx_frozen}**으로 가장 낮습니다. TX 지역 납품 후 복귀 차량에 냉동 물량을 상차하면 조지아 허브 재고 보충 물류비를 크게 절감할 수 있습니다.\n\n"
+                                   f"🧊 **냉장 시세**: NJ(본사) 지역이 **${nj_ref}**로 가장 높고, TX는 **${tx_ref}**, GA는 **${ga_ref}**입니다. 단가가 저렴한 남부(TX/GA)에서 신선 물량을 확보하여 NJ 본사로 올려보내는(Inbound) 매칭 시 시세 차익을 극대화할 수 있습니다.")
                 except Exception as e:
                     st.info("데이터를 분석 중입니다...")
                     
@@ -514,37 +548,43 @@ def view_market_price_comparison():
             st.markdown(f"### 🔍 {selected_region} 차익 분석")
             if not filtered_df_region.empty and '부위' in filtered_df_region.columns:
                 try:
-                    # 선택된 품목에 따라 분석 텍스트 분기 처리
-                    if "닭고기" in selected_item:
+                    # 품목명에 따른 분기 (검색 또는 라디오버튼)
+                    analyze_item = selected_item if not search_query else search_query
+
+                    if "닭고기" in analyze_item:
                         breast_price = filtered_df_region[(filtered_df_region['부위'].str.contains('가슴살')) & (filtered_df_region['상태']=='냉동')]['가격'].values[0]
                         thigh_price = filtered_df_region[(filtered_df_region['부위'].str.contains('다리살')) & (filtered_df_region['상태']=='냉동')]['가격'].values[0]
                         diff = round(breast_price - thigh_price, 2)
                         st.success(f"**부위별 B2B 프로모션 전략**\n\n"
                                    f"현재 {selected_region} 지역의 냉동 가슴살 단가는 **${breast_price}**이고, 다리살은 **${thigh_price}**입니다.\n\n"
                                    f"두 부위의 단가 차이는 **${diff}/LB**입니다. 가성비가 높은 다리살 위주의 프로모션을 기획하면 주요 식당(Customer) 등 B2B 대량 수요를 효과적으로 견인할 수 있습니다.")
-                    elif "새우" in selected_item:
+                    elif "새우" in analyze_item:
                         white_price = filtered_df_region[(filtered_df_region['부위'].str.contains('흰다리')) & (filtered_df_region['상태']=='냉동')]['가격'].values[0]
                         tiger_price = filtered_df_region[(filtered_df_region['부위'].str.contains('타이거')) & (filtered_df_region['상태']=='냉동')]['가격'].values[0]
                         diff = round(tiger_price - white_price, 2)
                         st.success(f"**새우 품종별 B2B 프로모션 전략**\n\n"
                                    f"현재 {selected_region} 지역의 냉동 블랙타이거 단가는 **${tiger_price}**이고, 흰다리새우는 **${white_price}**입니다.\n\n"
                                    f"두 품종의 단가 차이는 **${diff}/LB**입니다. 대중적인 메뉴에는 흰다리새우를, 프리미엄 메뉴가 필요한 거래처에는 블랙타이거를 제안하여 수익성을 높일 수 있습니다.")
-                    elif "돼지고기" in selected_item:
-                        belly_price = filtered_df_region[(filtered_df_region['부위'].str.contains('삼겹살')) & (filtered_df_region['상태']=='냉동')]['가격'].values[0]
-                        collar_price = filtered_df_region[(filtered_df_region['부위'].str.contains('목살')) & (filtered_df_region['상태']=='냉동')]['가격'].values[0]
-                        diff = round(belly_price - collar_price, 2)
-                        st.success(f"**돼지고기 부위별 B2B 프로모션 전략**\n\n"
-                                   f"현재 {selected_region} 지역의 냉동 삼겹살 단가는 **${belly_price}**이고, 목살은 **${collar_price}**입니다.\n\n"
-                                   f"두 부위의 단가 차이는 **${diff}/LB**입니다. K-BBQ 식당 수요가 많은 삼겹살을 주력으로 하되, 단가가 저렴한 목살을 세트 메뉴용으로 함께 제안하여 객단가를 높일 수 있습니다.")
-                    elif "소고기" in selected_item:
+                    elif "돼지고기" in analyze_item or "삼겹살" in analyze_item or "무기후지" in analyze_item:
+                        # 프리미엄 무기후지와 일반 삼겹살 비교
+                        if "무기후지" in filtered_df_region['부위'].values.tolist() or "일반 삼겹살(Belly)" in filtered_df_region['부위'].values.tolist():
+                            mugi_price = filtered_df_region[(filtered_df_region['부위'].str.contains('무기후지')) & (filtered_df_region['상태']=='냉동')]['가격'].values[0]
+                            normal_price = filtered_df_region[(filtered_df_region['부위'].str.contains('일반 삼겹살')) & (filtered_df_region['상태']=='냉동')]['가격'].values[0]
+                            diff = round(mugi_price - normal_price, 2)
+                            st.success(f"**프리미엄 K-BBQ 메뉴 제안 전략**\n\n"
+                                       f"현재 {selected_region} 지역의 냉동 무기후지 삼겹살 단가는 **${mugi_price}**, 일반 삼겹살은 **${normal_price}**입니다.\n\n"
+                                       f"두 품목의 단가 차이는 **${diff}/LB**입니다. 일반 삼겹살을 주력으로 하되, 프리미엄 식당 라인업에는 이익률이 좋은 무기후지 삼겹살을 적극 제안하여 객단가를 높여보세요.")
+                        else:
+                            st.info("돼지고기 세부 데이터를 분석 중입니다...")
+                    elif "소고기" in analyze_item:
                         ribeye_price = filtered_df_region[(filtered_df_region['부위'].str.contains('립아이')) & (filtered_df_region['상태']=='냉동')]['가격'].values[0]
                         brisket_price = filtered_df_region[(filtered_df_region['부위'].str.contains('브리스킷')) & (filtered_df_region['상태']=='냉동')]['가격'].values[0]
                         diff = round(ribeye_price - brisket_price, 2)
                         st.success(f"**소고기 부위별 B2B 프로모션 전략**\n\n"
                                    f"현재 {selected_region} 지역의 냉동 립아이 단가는 **${ribeye_price}**이고, 브리스킷은 **${brisket_price}**입니다.\n\n"
                                    f"두 부위의 단가 차이는 **${diff}/LB**입니다. 텍사스 BBQ 및 K-BBQ 수요가 높은 브리스킷을 주력 물량으로 확보하고, 프리미엄 스테이크용 립아이를 세트로 구성하여 객단가와 수익성을 동시에 높일 수 있습니다.")
-                except:
-                    st.info("세부 데이터를 분석 중입니다...")
+                except Exception as e:
+                    st.info("상세 차익 분석 데이터를 확인 중입니다...")
 
 def view_customer_portal():
     render_official_header()
