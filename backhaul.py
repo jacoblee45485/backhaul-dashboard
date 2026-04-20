@@ -190,7 +190,7 @@ def fetch_usda_api_data(manual_id=None):
     if not api_key:
         return pd.DataFrame(demo_prices), "API 키 미설정", {"error": "API 키가 없습니다."}, ""
 
-    target_id = manual_id if manual_id else "3646"
+    target_id = manual_id if manual_id else "aj_py047"
     
     # URL 시도 순서 (데이터 최우선)
     base_urls = [
@@ -361,9 +361,9 @@ def view_market_price_comparison():
     """, unsafe_allow_html=True)
 
     with st.expander("🛠️ API 통신 테스트 및 리포트 ID 설정 (개발자용)"):
-        st.markdown("**💡 테스트할 리포트 번호(ID) 찾는 방법:**\n1. [🔗 USDA MyMarketNews 공식 포털 (클릭)](https://mymarketnews.ams.usda.gov/)에 접속합니다.\n2. 검색창에 `Pork`, `Beef`, `Chicken` 등의 키워드를 검색합니다.\n3. 검색 결과에 나오는 **4자리 숫자(Report ID)**를 찾아 아래 입력창에 넣고 테스트해 보세요.")
+        st.markdown("**💡 테스트할 리포트 번호(ID) 찾는 방법:**\n1. [🔗 USDA MyMarketNews 공식 포털 (클릭)](https://mymarketnews.ams.usda.gov/)에 접속합니다.\n2. 검색창에 `Pork`, `Beef`, `Chicken` 등의 키워드를 검색합니다.\n3. 검색 결과에 나오는 **4자리 숫자(Report ID) 또는 Slug ID**를 찾아 아래 입력창에 넣고 테스트해 보세요.")
         col_id, col_btn = st.columns([3, 1])
-        manual_report_id = col_id.text_input("통신 테스트용 리포트 ID 입력 (예: 2811, 2498, 2752)", value="3646")
+        manual_report_id = col_id.text_input("통신 테스트용 리포트 ID/Slug 입력 (예: aj_py047, 2811)", value="aj_py047")
         if col_btn.button("API 통신 테스트", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
@@ -508,7 +508,7 @@ def view_market_price_comparison():
                         diff = round(tiger_price - white_price, 2)
                         st.success(f"**품종별 타겟 세분화 (예시)**\n\n"
                                    f"현재 {selected_region} 지역의 냉동 블랙타이거 단가는 **${tiger_price}**, 흰다리새우는 **${white_price}**입니다. (차이: **${diff}/LB**)\n\n"
-                                   f"대중적인 메뉴에는 흰다리새우를, 프리미엄 메뉴 거래처에는 블랙타이거를 분리 제안하세요.")
+                                   f"대중적인 메뉴에는 흰다리새우를, 프리미 가맹점 메뉴 거래처에는 블랙타이거를 분리 제안하세요.")
                     elif "돼지고기" in analyze_item or "삼겹살" in analyze_item or "무기후지" in analyze_item:
                         if "무기후지" in filtered_df_region['부위'].values.tolist() or "일반 삼겹살(Belly)" in filtered_df_region['부위'].values.tolist():
                             mugi_price = filtered_df_region[(filtered_df_region['부위'].str.contains('무기후지')) & (filtered_df_region['상태']=='냉동')]['가격'].values[0]
@@ -549,7 +549,7 @@ def view_help():
     현재는 **분석 로직과 시각화를 검증하기 위한 시뮬레이션 모드**로 동작합니다.
 
     ### 2. 실제 데이터 연동을 위한 향후 과제
-    - **품목별 리포트 ID 발굴**: 닭고기(3646) 외에 소고기, 돼지고기, 해산물에 대한 정확한 USDA 리포트 번호 파악이 필요합니다.
+    - **품목별 리포트 ID 발굴**: 가금류(`aj_py047`) 외에 소고기, 돼지고기, 해산물에 대한 정확한 USDA 리포트 번호 파악이 필요합니다.
     - **JSON 파싱 로직 개발**: 각 리포트의 고유한 JSON 데이터 구조에서 특정 부위(예: 삼겹살, 립아이)의 단가를 발라내는 코드를 개별적으로 작성해야 합니다.
     - **할당(Allocation) 품목 처리**: 무기후지처럼 공시되지 않는 프리미엄 브랜드육은 벤더에서 제공하는 별도의 단가표(Excel/API)를 연동하는 시스템이 추가로 구축되어야 합니다.
     """)
