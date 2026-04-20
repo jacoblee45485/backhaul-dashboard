@@ -81,12 +81,12 @@ def render_official_header():
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. USDA MyMarketNews API 실시간 연동 엔진 (품목 및 부위별 데이터 확장)
+# 2. USDA MyMarketNews API 실시간 연동 엔진
 # ==========================================
 def fetch_usda_api_data(manual_id=None):
     """
     USDA MARS API 실시간 호출 로직.
-    *주의: 현재 반환되는 가격 데이터는 시스템 분석 로직 검증을 위한 가상의 시뮬레이션 데이터입니다.
+    개발 및 매핑을 위해 Raw JSON 데이터를 함께 반환하도록 기능을 추가함.
     """
     api_key = st.secrets.get("USDA_API_KEY", "J5v4ZF527NWTsrcMJeB7jrXgfgRyPVzd")
     
@@ -188,7 +188,7 @@ def fetch_usda_api_data(manual_id=None):
     ]
 
     if not api_key:
-        return pd.DataFrame(demo_prices), "API 키 미설정"
+        return pd.DataFrame(demo_prices), "API 키 미설정", None
 
     target_id = manual_id if manual_id else "3646"
     
@@ -206,16 +206,17 @@ def fetch_usda_api_data(manual_id=None):
     headers = {
         "Authorization": f"Basic {encoded_auth}",
         "Accept": "application/json",
-        "User-Agent": "GiantFoodsystem-Dashboard/2.7"
+        "User-Agent": "GiantFoodsystem-Dashboard/2.8"
     }
     
     last_status = "No Attempt"
     debug_log = []
     final_response = None
     successful_url = ""
+    raw_json_data = None
     
     try:
-        # 1. API 통신 시도 (연결 가능 여부만 체크)
+        # 1. API 통신 시도
         for url in base_urls:
             try:
                 res = requests.get(url, headers=headers, timeout=12)
@@ -230,21 +231,24 @@ def fetch_usda_api_data(manual_id=None):
                 debug_log.append(f"URL: {url} | Exception: {str(e)}")
                 continue
         
-        # 2. 통신 결과와 무관하게 시스템 검증을 위해 무조건 시뮬레이션 데이터를 반환합니다.
-        # 향후 리포트별 JSON 파싱 코드가 완성되면 이 부분을 실제 파싱 로직으로 대체해야 합니다.
+        # 2. 통신 결과 확인 및 Raw JSON 확보
         if final_response:
+            try:
+                raw_json_data = final_response.json()
+            except Exception:
+                pass
+
             if successful_url.endswith("/reports"):
                 st.session_state['api_debug_details'] = debug_log + ["", "🎯 진단 결과: API 통신 성공", "현재 표시되는 데이터는 로직 검증용 시뮬레이션입니다."]
-                return pd.DataFrame(demo_prices), "API 통신 성공 (시뮬레이션 모드 가동 중)"
+                return pd.DataFrame(demo_prices), "API 통신 성공 (시뮬레이션 모드 가동 중)", raw_json_data
             else:
-                # 통신에 성공했더라도 시뮬레이션 데이터 반환 (변동성 약간 부여)
-                return pd.DataFrame(demo_prices), f"API 통신 성공 ({datetime.now().strftime('%H:%M:%S')} - 시뮬레이션)"
+                return pd.DataFrame(demo_prices), f"API 통신 성공 ({datetime.now().strftime('%H:%M:%S')} - 시뮬레이션)", raw_json_data
         else:
             st.session_state['api_debug_details'] = debug_log
-            return pd.DataFrame(demo_prices), f"통신 실패 (Status: {last_status}) - 시뮬레이션 가동"
+            return pd.DataFrame(demo_prices), f"통신 실패 (Status: {last_status}) - 시뮬레이션 가동", None
             
     except Exception as e:
-        return pd.DataFrame(demo_prices), f"시스템 오류 - 시뮬레이션 가동"
+        return pd.DataFrame(demo_prices), f"시스템 오류 - 시뮬레이션 가동", None
 
 # ==========================================
 # 3. 데이터 로드 로직 (구글 시트 연동)
@@ -364,9 +368,9 @@ def view_market_price_comparison():
             st.rerun()
             
     if use_live_api:
-        df_price, update_status = fetch_usda_api_data(manual_report_id)
+        df_price, update_status, raw_json = fetch_usda_api_data(manual_report_id)
     else:
-        df_price, update_status = fetch_usda_api_data(manual_report_id)
+        df_price, update_status, raw_json = fetch_usda_api_data(manual_report_id)
         update_status = "오프라인 시뮬레이션 모드"
 
     status_color = "#f59e0b" # 오렌지색으로 변경 (시뮬레이션 강조)
@@ -378,6 +382,12 @@ def view_market_price_comparison():
         for log in st.session_state['api_debug_details']:
             st.text(log)
         st.markdown('</div>', unsafe_allow_html=True)
+        
+    # 개발자를 위한 실제 RAW JSON 뷰어 탭 추가
+    if raw_json and use_live_api:
+        with st.expander(f"💻 실제 {manual_report_id}번 리포트 Raw JSON (파싱 개발용)"):
+            st.info("실제 데이터를 화면에 띄우기 위한 매핑 작업(Parsing)을 하려면, 아래 출력된 JSON 구조의 키(Key) 값들을 파악하여 데이터 추출 코드를 작성해야 합니다.")
+            st.json(raw_json)
 
     st.markdown("---")
     
