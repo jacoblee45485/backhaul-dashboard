@@ -121,13 +121,13 @@ df_trucks = ensure_columns(df_trucks, ["truck_id", "region", "return_day", "capa
 if 'current_menu' not in st.session_state:
     st.session_state.current_menu = "통합 주문 현황"
 
-# 사이드바 상단 브랜드명 컬러 스타일링 수정
+# 사이드바 상단 브랜드명 컬러 및 크기 조절
 st.sidebar.markdown("""
-<h2 style="margin: 0; font-weight: 900; line-height: 1.1;">
+<h2 style="margin: 0; font-weight: 900; line-height: 1.0;">
     <span style="color: #E31837;">GIANT</span><br>
-    <span style="color: #cbd5e1; font-size: 1.4rem;">FOODSYSTEM</span>
+    <span style="color: #cbd5e1; font-size: 1.1rem; letter-spacing: 1px;">FOODSYSTEM</span>
 </h2>
-<p style="font-size: 0.8rem; font-weight: 600; color: #64748b; margin-top: 5px;">HQ: NJ | Hub: GA</p>
+<p style="font-size: 0.8rem; font-weight: 600; color: #64748b; margin-top: 8px;">HQ: NJ | Hub: GA</p>
 """, unsafe_allow_html=True)
 st.sidebar.markdown("---")
 
