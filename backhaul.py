@@ -3,7 +3,6 @@ import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 
 # Plotly 라이브러리 안전하게 불러오기 (미국 지도 시각화용)
-# Plotly ñanduti rembipyahu ñongatu porã
 try:
     import plotly.graph_objects as go
     PLOTLY_AVAILABLE = True
@@ -13,7 +12,6 @@ except ImportError:
 # ==========================================
 # 1. 페이지 설정 및 회사 공식 스타일 적용
 # ==========================================
-# 1. Tenda mohenda ha mba'apohára reko
 st.set_page_config(
     page_title="GIANT FOODSYSTEM - 백홀 관리 시스템", 
     page_icon="🚚", 
@@ -22,7 +20,6 @@ st.set_page_config(
 )
 
 # 커스텀 CSS (메트릭 카드 및 레이아웃 스타일)
-# CSS teete (Mba'e rechaukaha ha tenda mohenda)
 st.markdown("""
 <style>
     .block-container { padding-top: 1.5rem; }
@@ -40,7 +37,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # 회사 공식 타이틀과 상세 설명이 포함된 헤더 렌더링 함수
-# Akã guasu rembiapo (Giant Foodsystem mba'e rechaukaha)
 def render_official_header():
     st.markdown("""
     <div style="background-color: #f8fafc; padding: 40px 20px; border-radius: 15px; border: 2px solid #e2e8f0; margin-bottom: 30px; text-align: center;">
@@ -56,14 +52,13 @@ def render_official_header():
     """, unsafe_allow_html=True)
 
 # 구글 시트 연결 설정
-# Google kuatiañe'ẽ ñembojoaju
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
 except Exception as e:
     st.error("라이브러리 연결 오류가 발생했습니다. GitHub의 requirements.txt 설정을 확인해주세요.")
 
 # 데이터 불러오기 함수 (캐시 적용)
-# Marandu mbyaty rembiapo (Cache ndive)
+# ttl=60은 1분 동안 데이터를 메모리에 보관함을 의미합니다.
 @st.cache_data(ttl=60)
 def load_data():
     try:
@@ -77,7 +72,6 @@ def load_data():
 df_clients, df_orders, df_trucks = load_data()
 
 # 데이터 기본 구조 보장
-# Marandu reko ñemohenda
 if df_clients.empty:
     df_clients = pd.DataFrame(columns=["client_id", "name", "type"])
 if df_orders.empty:
@@ -86,14 +80,12 @@ if df_trucks.empty:
     df_trucks = pd.DataFrame(columns=["truck_id", "region", "return_day", "capacity", "assigned"])
 
 # 메뉴 상태 관리
-# Tembipuru ñangareko
 if 'current_menu' not in st.session_state:
     st.session_state.current_menu = "통합 주문 현황"
 
 # ==========================================
 # 2. 시각화 요소: 미국 네트워크 지도 (Plotly)
 # ==========================================
-# 2. EE.UU. mapa rechaukaha (Plotly)
 def render_network_map():
     if not PLOTLY_AVAILABLE:
         st.warning("지도 라이브러리(Plotly)가 설치되지 않았습니다. 도움말 메뉴를 확인하여 라이브러리를 설치하세요.")
@@ -156,7 +148,6 @@ def render_network_map():
 # ==========================================
 # 3. 사이드바 구성
 # ==========================================
-# 3. Yke pegua ñemohenda
 st.sidebar.markdown("""
 <h2 style="margin: 0; font-weight: 900;">
     <span style="color: #E31837;">GIANT</span> <span style="color: #000000;">FOOD</span>
@@ -165,34 +156,34 @@ st.sidebar.markdown("""
 """, unsafe_allow_html=True)
 st.sidebar.markdown("---")
 
+# 데이터 동기화 버튼 (캐시 삭제 후 재실행)
+if st.sidebar.button("🔄 실시간 데이터 업데이트", use_container_width=True):
+    st.cache_data.clear()
+    st.rerun()
+
+st.sidebar.markdown("---")
+
 all_menus = ["통합 주문 현황", "공동구매 전용 관리", "트럭 배차 현황", "시스템 도움말"]
 for menu in all_menus:
     if st.sidebar.button(menu, key=f"sidebar_{menu}", use_container_width=True):
         st.session_state.current_menu = menu
 
 # --- [사이드바 하단 공유 섹션] ---
-# Yke pegua pehẽngue (QR ha link)
 st.sidebar.markdown("<br><br>", unsafe_allow_html=True)
 st.sidebar.markdown("---")
 st.sidebar.subheader("🔗 시스템 공유하기")
 
-# [중요] 배포 완료 후 브라우저 주소창의 실제 URL로 이 부분을 바꿔주세요!
-# Tenda mohenda URL tee
 backhaul_share_url = "https://backhaul-dashboard-f8gdhjdyappm23kcj6hli87.streamlit.app/" 
-
-# QR 코드 생성 (QR Server API 사용)
 qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={backhaul_share_url}"
 
 st.sidebar.image(qr_api_url, caption="QR 코드를 스캔하세요", use_column_width=False, width=150)
 st.sidebar.markdown(f"**[접속 링크 복사]**")
 st.sidebar.code(backhaul_share_url, language=None)
-st.sidebar.caption("⚠️ 접속 오류 시 '시스템 도움말'을 확인하세요.")
 
 
 # ==========================================
 # 4. 화면 뷰 1: 통합 주문 현황
 # ==========================================
-# 4. Tenda rechaukaha 1: Marandu mbyaty
 def view_unified_orders():
     render_official_header()
     
@@ -243,7 +234,6 @@ def view_unified_orders():
 # ==========================================
 # 5. 화면 뷰 2: 공동구매 전용 관리
 # ==========================================
-# 5. Tenda rechaukaha 2: Ñemumu Joaju
 def view_group_buy():
     render_official_header()
     st.subheader("🤝 공동구매 전용 관리 (Group Buy Progress)")
@@ -273,7 +263,6 @@ def view_group_buy():
 # ==========================================
 # 6. 화면 뷰 3: 트럭 배차 현황
 # ==========================================
-# 6. Tenda rechaukaha 3: Camion ñemohenda
 def view_truck_dispatch():
     render_official_header()
     st.subheader("🚚 트럭 배차 현황 (Backhaul Dispatch)")
@@ -304,20 +293,20 @@ def view_truck_dispatch():
 # ==========================================
 # 7. 화면 뷰 4: 배포 가이드 및 도움말 (Help & Deployment)
 # ==========================================
-# 7. Pytyvõ ha Ñemohenda tape
 def view_help():
     render_official_header()
-    st.subheader("❓ 큐알코드 접속 오류 해결 방법")
+    st.subheader("❓ 데이터가 반영되지 않을 때")
     
-    st.error("### 🚫 'You do not have access' 오류 발생 시")
+    st.warning("### 🔄 데이터 동기화 문제 해결")
     st.markdown("""
-    1. **앱 공개 범위 확인:** Streamlit Cloud 대시보드에서 해당 앱의 설정(Settings) 중 **'App sharing'**이 **Public**으로 되어 있는지 확인하세요.
-    2. **URL 일치 여부:** 현재 브라우저 주소창에 떠 있는 주소를 복사하여 코드의 `backhaul_share_url` 변수에 정확히 붙여넣어야 합니다. 
-       (현재 설정된 `giant-backhaul.streamlit.app`은 예시 주소이므로 본인의 주소로 바꿔야 합니다.)
-    3. **저장(Commit) 필수:** 코드를 수정한 후 GitHub에서 반드시 **Commit**을 눌러야 실제 앱에 반영됩니다.
+    구글 시트에 데이터를 입력했는데 대시보드에 보이지 않는다면 다음 방법을 시도하세요.
+    
+    1. **사이드바의 '실시간 데이터 업데이트' 버튼 클릭:** 가장 확실한 방법입니다. 저장된 캐시를 즉시 삭제하고 새 데이터를 가져옵니다.
+    2. **자동 갱신 대기:** 기본적으로 60초마다 데이터를 새로 확인합니다. 수정 후 약 1분 뒤에 화면을 새로고침해 보세요.
+    3. **시트 저장 확인:** 구글 시트에서 입력한 셀이 저장되었는지(구글 서버에 반영되었는지) 확인하세요.
     """)
     
-    st.info("### 🔗 구글 시트 연결 (Secrets)")
+    st.info("### 🔗 구글 시트 연결 설정")
     st.markdown("""
     1. **Streamlit Settings** -> **Secrets** 클릭
     2. 아래 형식으로 입력 (URL은 본인 시트 주소로 교체):
@@ -328,7 +317,6 @@ def view_help():
     """)
 
 # 메인 라우팅
-# Tape mohenda tee
 if st.session_state.current_menu == "통합 주문 현황":
     view_unified_orders()
 elif st.session_state.current_menu == "공동구매 전용 관리":
