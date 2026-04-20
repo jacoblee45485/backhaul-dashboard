@@ -51,25 +51,32 @@ def render_official_header():
     </div>
     """, unsafe_allow_html=True)
 
-# 구글 시트 연결 설정
+# ==========================================
+# 2. 구글 시트 연결 및 데이터 로드 (디버깅 강화)
+# ==========================================
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
 except Exception as e:
-    st.error("라이브러리 연결 오류가 발생했습니다. GitHub의 requirements.txt 설정을 확인해주세요.")
+    st.error(f"연결 설정 오류: {e}")
 
-# 데이터 불러오기 함수 (캐시 적용)
-# ttl=60은 1분 동안 데이터를 메모리에 보관함을 의미합니다.
 @st.cache_data(ttl=60)
 def load_data():
     try:
+        # 각 워크시트 이름이 구글 시트의 탭 이름과 정확히 일치해야 합니다.
         clients = conn.read(worksheet="Clients")
         orders = conn.read(worksheet="Orders")
         trucks = conn.read(worksheet="Trucks")
-        return clients, orders, trucks
-    except Exception:
-        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        return clients, orders, trucks, None
+    except Exception as e:
+        # 에러 발생 시 에러 메시지를 반환하여 화면에 표시
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), str(e)
 
-df_clients, df_orders, df_trucks = load_data()
+df_clients, df_orders, df_trucks, error_msg = load_data()
+
+# 에러가 있을 경우 사용자에게 알림
+if error_msg:
+    st.error(f"⚠️ 데이터를 불러오지 못했습니다. 이유: {error_msg}")
+    st.info("💡 팁: 구글 시트의 탭 이름이 'Clients', 'Orders', 'Trucks'인지 확인하고, 시트가 공유 가능 상태인지 확인하세요.")
 
 # 데이터 기본 구조 보장
 if df_clients.empty:
@@ -84,7 +91,7 @@ if 'current_menu' not in st.session_state:
     st.session_state.current_menu = "통합 주문 현황"
 
 # ==========================================
-# 2. 시각화 요소: 미국 네트워크 지도 (Plotly)
+# 3. 시각화 요소: 미국 네트워크 지도
 # ==========================================
 def render_network_map():
     if not PLOTLY_AVAILABLE:
@@ -146,7 +153,7 @@ def render_network_map():
     st.plotly_chart(fig, use_container_width=True)
 
 # ==========================================
-# 3. 사이드바 구성
+# 4. 사이드바 구성
 # ==========================================
 st.sidebar.markdown("""
 <h2 style="margin: 0; font-weight: 900;">
@@ -156,7 +163,6 @@ st.sidebar.markdown("""
 """, unsafe_allow_html=True)
 st.sidebar.markdown("---")
 
-# 데이터 동기화 버튼 (캐시 삭제 후 재실행)
 if st.sidebar.button("🔄 실시간 데이터 업데이트", use_container_width=True):
     st.cache_data.clear()
     st.rerun()
@@ -168,7 +174,6 @@ for menu in all_menus:
     if st.sidebar.button(menu, key=f"sidebar_{menu}", use_container_width=True):
         st.session_state.current_menu = menu
 
-# --- [사이드바 하단 공유 섹션] ---
 st.sidebar.markdown("<br><br>", unsafe_allow_html=True)
 st.sidebar.markdown("---")
 st.sidebar.subheader("🔗 시스템 공유하기")
@@ -180,9 +185,8 @@ st.sidebar.image(qr_api_url, caption="QR 코드를 스캔하세요", use_column_
 st.sidebar.markdown(f"**[접속 링크 복사]**")
 st.sidebar.code(backhaul_share_url, language=None)
 
-
 # ==========================================
-# 4. 화면 뷰 1: 통합 주문 현황
+# 5. 화면 뷰 로직
 # ==========================================
 def view_unified_orders():
     render_official_header()
@@ -211,7 +215,7 @@ def view_unified_orders():
     with col_list:
         st.subheader("📍 지역별 수요 집계")
         if df_orders.empty:
-            st.info("접수된 주문 데이터가 아직 없습니다.")
+            st.info("데이터가 없거나 연결되지 않았습니다.")
         else:
             df_merged = pd.merge(df_orders, df_clients, on="client_id", how="left")
             summary = df_merged.groupby('region')['quantity'].sum().reset_index()
@@ -231,27 +235,19 @@ def view_unified_orders():
             else:
                 st.write("데이터 없음")
 
-# ==========================================
-# 5. 화면 뷰 2: 공동구매 전용 관리
-# ==========================================
 def view_group_buy():
     render_official_header()
     st.subheader("🤝 공동구매 전용 관리 (Group Buy Progress)")
-    
     if df_orders.empty:
         st.info("진행 중인 주문이 없습니다.")
         return
-
     df_merged = pd.merge(df_orders, df_clients, on="client_id", how="left")
     gb_data = df_merged[df_merged['type'] == 'GroupBuy']
-    
     if gb_data.empty:
         st.info("현재 진행 중인 공동구매가 없습니다.")
         return
-
     deals = gb_data.groupby(['region', 'product'])['quantity'].sum().reset_index()
     TARGET_CAPACITY = 20
-    
     cols = st.columns(2)
     for i, (_, row) in enumerate(deals.iterrows()):
         with cols[i % 2]:
@@ -260,22 +256,16 @@ def view_group_buy():
             st.progress(progress)
             st.write(f"모집 현황: **{row['quantity']}** / {TARGET_CAPACITY} PLT ({int(progress*100)}%)")
 
-# ==========================================
-# 6. 화면 뷰 3: 트럭 배차 현황
-# ==========================================
 def view_truck_dispatch():
     render_official_header()
     st.subheader("🚚 트럭 배차 현황 (Backhaul Dispatch)")
-    
     days_map = {"화": "NC_SC", "수": "TX", "금": "FL"}
     cols = st.columns(3)
-    
     for i, (day, region) in enumerate(days_map.items()):
         with cols[i]:
             if day == "화": st.error(f"### {day}요일 ({region})")
             elif day == "수": st.warning(f"### {day}요일 ({region})")
             else: st.success(f"### {day}요일 ({region})")
-            
             day_trucks = df_trucks[df_trucks['return_day'] == day]
             if day_trucks.empty:
                 st.caption("해당 요일 운행 트럭 정보 없음")
@@ -283,36 +273,29 @@ def view_truck_dispatch():
                 for _, truck in day_trucks.iterrows():
                     try: is_assigned = int(truck['assigned']) == 1
                     except: is_assigned = False
-                    
                     status = "✅ 상차 완료" if is_assigned else "🔲 배차 대기"
                     st.markdown(f"**{truck['truck_id']}** ({truck['capacity']} PLT)")
                     st.caption(status)
                     if not is_assigned:
                         st.button(f"{truck['truck_id']} 배차 확정", key=f"d_btn_{truck['truck_id']}")
 
-# ==========================================
-# 7. 화면 뷰 4: 배포 가이드 및 도움말 (Help & Deployment)
-# ==========================================
 def view_help():
     render_official_header()
     st.subheader("❓ 데이터가 반영되지 않을 때")
-    
     st.warning("### 🔄 데이터 동기화 문제 해결")
     st.markdown("""
     구글 시트에 데이터를 입력했는데 대시보드에 보이지 않는다면 다음 방법을 시도하세요.
     
-    1. **사이드바의 '실시간 데이터 업데이트' 버튼 클릭:** 가장 확실한 방법입니다. 저장된 캐시를 즉시 삭제하고 새 데이터를 가져옵니다.
-    2. **자동 갱신 대기:** 기본적으로 60초마다 데이터를 새로 확인합니다. 수정 후 약 1분 뒤에 화면을 새로고침해 보세요.
-    3. **시트 저장 확인:** 구글 시트에서 입력한 셀이 저장되었는지(구글 서버에 반영되었는지) 확인하세요.
+    1. **탭 이름 확인:** 구글 시트 하단의 탭 이름이 **Clients**, **Orders**, **Trucks**와 정확히 일치해야 합니다. (대소문자 주의)
+    2. **시트 주소 확인:** Streamlit Secrets에 입력된 주소가 현재 편집 중인 시트의 주소인지 확인하세요.
+    3. **공유 권한:** 시트 우측 상단 '공유' 버튼을 눌러 '링크가 있는 모든 사용자'가 읽을 수 있도록 설정되어 있는지 확인하세요.
+    4. **업데이트 버튼:** 사이드바의 '실시간 데이터 업데이트' 버튼을 클릭하세요.
     """)
-    
-    st.info("### 🔗 구글 시트 연결 설정")
+    st.info("### 🔗 구글 시트 연결 설정 (Secrets)")
     st.markdown("""
-    1. **Streamlit Settings** -> **Secrets** 클릭
-    2. 아래 형식으로 입력 (URL은 본인 시트 주소로 교체):
     ```toml
     [connections.gsheets]
-    spreadsheet = "[https://docs.google.com/spreadsheets/d/본인_시트_아이디/edit#gid=0](https://docs.google.com/spreadsheets/d/본인_시트_아이디/edit#gid=0)"
+    spreadsheet = "[https://docs.google.com/spreadsheets/d/시트_아이디/edit#gid=0](https://docs.google.com/spreadsheets/d/시트_아이디/edit#gid=0)"
     ```
     """)
 
