@@ -145,25 +145,25 @@ st.sidebar.image(qr_api_url, caption="시스템 접속 QR", width=150)
 
 def render_network_map():
     """
-    뉴저지 본사(HQ)와 조지아 물류 허브(Hub)를 중심으로 한 전국 네트워크 시각화
+    뉴저지 본사(HQ)와 조지아 물류 허브(Hub)를 중심으로 한 전국 네트워크 시각화 (도시명 제외)
     """
     if not PLOTLY_AVAILABLE:
         st.warning("지도 라이브러리(Plotly)를 사용할 수 없습니다.")
         return
 
-    # 주요 거점 좌표 및 역할 설정
+    # 주요 거점 좌표 및 주 단위 역할 설정 (도시 이름 제거)
     hubs = {
-        'Newark, NJ (Headquarters)': [40.7128, -74.0060],
-        'Atlanta, GA (Logistics Hub)': [33.7490, -84.3880],
-        'Houston, TX (Regional)': [29.7604, -95.3698],
-        'Miami, FL (Regional)': [25.7617, -80.1918],
-        'Charlotte, NC/SC (Regional)': [35.2271, -80.8431]
+        'NJ (Headquarters)': [40.7128, -74.0060],
+        'GA (Logistics Hub)': [33.7490, -84.3880],
+        'TX (Regional Hub)': [29.7604, -95.3698],
+        'FL (Regional Hub)': [25.7617, -80.1918],
+        'NC/SC (Regional Hub)': [35.2271, -80.8431]
     }
     
     fig = go.Figure()
 
     # 조지아 허브에서 각 거점으로 이어지는 경로선 추가 (GA Hub 중심 연결)
-    hub_lat, hub_lon = hubs['Atlanta, GA (Logistics Hub)']
+    hub_lat, hub_lon = hubs['GA (Logistics Hub)']
     for name, coord in hubs.items():
         if 'GA' not in name:
             fig.add_trace(go.Scattergeo(
@@ -176,7 +176,7 @@ def render_network_map():
                 hoverinfo = 'none'
             ))
 
-    # 거점 포인트 및 지역명 라벨 표시
+    # 거점 포인트 및 주 이름 라벨 표시
     lats = [v[0] for v in hubs.values()]
     lons = [v[1] for v in hubs.values()]
     names = list(hubs.keys())
@@ -202,7 +202,7 @@ def render_network_map():
         text = names,
         mode = 'markers+text',
         textposition = "top center",
-        textfont = dict(family="sans serif", size=11, color="#0f172a"),
+        textfont = dict(family="sans serif", size=11, color="#0f172a", font_weight="bold"),
         marker = dict(
             size = sizes,
             color = colors,
@@ -307,7 +307,7 @@ def view_data_management():
 def view_supplier_search():
     render_official_header()
     st.subheader("🔍 주요 거점 파트너 정보")
-    st.info("HQ: Newark, NJ | HUB: Atlanta, GA | Regional: Houston, Miami, Charlotte")
+    st.info("HQ: NJ | HUB: GA | Regional Hubs: TX, FL, NC/SC")
 
 def view_help():
     render_official_header()
