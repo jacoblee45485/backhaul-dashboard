@@ -44,7 +44,6 @@ def render_official_header():
         <rect width="100" height="60" fill="#f1f5f9" rx="5"/>
         <path d="M15,15 Q30,10 50,15 T85,15 L85,45 Q60,50 30,45 T15,45 Z" fill="#cbd5e1" />
         <circle cx="72" cy="38" r="6" fill="#E31837" />
-        <text x="72" y="41" font-size="7" font-weight="900" fill="white" text-anchor="middle">GA</text>
     </svg>
     """
     
@@ -54,11 +53,10 @@ def render_official_header():
         <rect width="100" height="60" fill="#f1f5f9" rx="5"/>
         <path d="M15,15 Q30,10 50,15 T85,15 L85,45 Q60,50 30,45 T15,45 Z" fill="#cbd5e1" />
         <circle cx="80" cy="22" r="6" fill="#E31837" />
-        <text x="80" y="25" font-size="7" font-weight="900" fill="white" text-anchor="middle">NJ</text>
     </svg>
     """
 
-    # HTML 구조를 한 줄로 선언하여 렌더링 오류 방지
+    # HTML 구조를 명확하게 선언
     header_html = f"""
     <div style="background-color: #f8fafc; padding: 25px 40px; border-radius: 15px; border: 2px solid #e2e8f0; margin-bottom: 30px; display: flex; align-items: center; justify-content: space-between; min-height: 120px; color: #000000;">
         <div style="text-align: center; width: 150px; flex-shrink: 0;">
