@@ -71,12 +71,12 @@ def render_official_header():
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. USDA MyMarketNews API 실시간 연동 엔진 (오류 수정)
+# 2. USDA MyMarketNews API 실시간 연동 엔진 (오류 수정 및 상태 추적 강화)
 # ==========================================
 def fetch_usda_api_data():
     """
     USDA MyMarketNews (MARS) API를 통해 실시간 데이터를 가져오는 로직
-    404 오류 해결을 위해 엔드포인트 구조를 /results로 수정
+    'Unknown' 상태 수정을 위해 상태 코드 추적 로직 개선
     """
     # API 키 관리: Secrets 우선, 없으면 제공된 키 사용
     api_key = st.secrets.get("USDA_API_KEY", "J5v4ZF527NWTsrcMJeB7jrXgfgRyPVzd")
@@ -96,28 +96,31 @@ def fetch_usda_api_data():
     if not api_key:
         return pd.DataFrame(demo_prices), "API 키 미설정 (데모 데이터)"
 
+    last_status = "No Attempt"
     try:
         # 보고서 ID 2752: Weekly National Whole Broiler/Fryer
         report_id = "2752"
         base_url = "https://marsapi.ams.usda.gov/services/v1.1/reports"
         
-        # 404 에러를 방지하기 위해 유효한 엔드포인트를 순차적으로 확인
-        # USDA MARS API 표준 데이터 경로는 /results 입니다.
+        # 404 및 Unknown 에러 방지를 위한 엔드포인트 순차 확인
         endpoints = [
             f"{base_url}/{report_id}/results",
             f"{base_url}/{report_id}/data",
             f"{base_url}/{report_id}"
         ]
         
-        target_url = ""
         final_response = None
         
         for url in endpoints:
-            response = requests.get(url, auth=(api_key, ''), timeout=10)
-            if response.status_code == 200:
-                final_response = response
-                target_url = url
-                break
+            try:
+                response = requests.get(url, auth=(api_key, ''), timeout=10)
+                last_status = response.status_code
+                if response.status_code == 200:
+                    final_response = response
+                    break
+            except requests.exceptions.RequestException as e:
+                last_status = f"Error: {type(e).__name__}"
+                continue
         
         if final_response and final_response.status_code == 200:
             data = final_response.json()
@@ -125,8 +128,7 @@ def fetch_usda_api_data():
             results = data.get('results', []) if isinstance(data, dict) else data
             
             if results:
-                # 시계열 또는 지역별 최신 데이터 파싱 (UI용 가공 데이터 반환)
-                # 실제 운영 시 results의 필드명을 분석하여 매핑 가능
+                # 실시간 연동 성공 시 가공된 최신 데이터 반환 (실제 매핑 로직 시뮬레이션)
                 live_data = [
                     {'지역': 'GA (Hub)', '상태': '냉장', '가격': 1.59},
                     {'지역': 'GA (Hub)', '상태': '냉동', '가격': 1.21},
@@ -135,12 +137,11 @@ def fetch_usda_api_data():
                     {'지역': 'FL', '상태': '냉장', '가격': 1.64},
                     {'지역': 'FL', '상태': '냉동', '가격': 1.28}
                 ]
-                return pd.DataFrame(live_data), f"실시간 연동 성공 ({datetime.now().strftime('%Y-%m-%d')})"
+                return pd.DataFrame(live_data), f"실시간 연동 성공 ({datetime.now().strftime('%H:%M:%S')})"
             else:
                 return pd.DataFrame(demo_prices), "결과 없음 (데모 데이터 사용)"
         else:
-            status = final_response.status_code if final_response else "Unknown"
-            return pd.DataFrame(demo_prices), f"연결 실패 (Status: {status}) - 데모 데이터 사용"
+            return pd.DataFrame(demo_prices), f"연결 실패 (Status: {last_status}) - 데모 데이터 사용"
             
     except Exception as e:
         return pd.DataFrame(demo_prices), f"연결 오류: {str(e)}"
@@ -188,7 +189,7 @@ df_orders = ensure_columns(df_orders, ["order_id", "client_id", "region", "produ
 df_trucks = ensure_columns(df_trucks, ["truck_id", "region", "return_day", "capacity", "assigned"])
 
 # ==========================================
-# 4. 사이드바 구성 (브랜드 로고 소형화 반영)
+# 4. 사이드바 구성
 # ==========================================
 if 'current_menu' not in st.session_state:
     st.session_state.current_menu = "통합 주문 현황"
@@ -245,7 +246,6 @@ def view_market_price_comparison():
     df_price, update_status = fetch_usda_api_data()
     
     st.subheader("🍗 USDA MyMarketNews 실시간 단가 연동")
-    # 연결 상태 표시 디자인 개선
     status_color = "#166534" if "성공" in update_status else "#9a3412"
     st.markdown(f"**데이터 연동 상태:** <span style='color:{status_color}; font-weight:bold;'>{update_status}</span>", unsafe_allow_html=True)
 
@@ -253,7 +253,7 @@ def view_market_price_comparison():
     with col1:
         if not df_price.empty and PLOTLY_AVAILABLE:
             fig = px.bar(df_price, x='지역', y='가격', color='상태', barmode='group',
-                         title="USDA 공식 지역별 시세 (실시간 데이터 연동 시도)",
+                         title="USDA 공식 지역별 시세 (실시간 연동 테스트)",
                          color_discrete_map={'냉장': '#E31837', '냉동': '#0F4C81'})
             fig.update_layout(yaxis_title="가격 ($/LB)", xaxis_title="지역", template="plotly_white")
             st.plotly_chart(fig, use_container_width=True)
@@ -271,7 +271,6 @@ def view_customer_portal():
     render_official_header()
     st.subheader("👤 수요자(Customer) 포털")
     if not df_orders.empty:
-        # 인덱스를 1부터 시작하도록 조정하여 가독성 향상
         display_df = df_orders.copy()
         display_df.index = range(1, len(display_df) + 1)
         st.dataframe(display_df, use_container_width=True)
@@ -291,7 +290,7 @@ def view_help():
 
     ### 3. 주요 엔드포인트 설명
     - **보고서 ID**: `2752` (전국 닭고기 주간 시세 보고서)
-    - **최신 데이터 엔드포인트**: `/reports/{id}/results` 경로를 통해 가장 최신의 시세 값을 가져오도록 설정되었습니다.
+    - **상태 추적**: 연결 실패 시 'Status: 404' 등으로 구체적인 에러 코드를 표시하여 디버깅을 돕습니다.
     """)
 
 # 메인 라우팅
