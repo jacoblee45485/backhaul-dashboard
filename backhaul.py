@@ -131,8 +131,8 @@ st.sidebar.markdown("""
 """, unsafe_allow_html=True)
 st.sidebar.markdown("---")
 
-# 메뉴 버튼들
-all_menus = ["통합 주문 현황", "수요자(Customer) 포털", "백홀 파트너(단순물류이송)", "공급자 파트너 서치", "데이터 통합 관리", "시스템 도움말"]
+# 메뉴 버튼들 (명칭 변경 반영)
+all_menus = ["통합 주문 현황", "수요자(Customer) 포털", "백홀 파트너(단순물류이송)", "지역별 공급자 파트너", "데이터 통합 관리", "시스템 도움말"]
 for menu in all_menus:
     if st.sidebar.button(menu, key=f"sidebar_{menu}", use_container_width=True):
         st.session_state.current_menu = menu
@@ -238,7 +238,7 @@ elif st.session_state.current_menu == "수요자(Customer) 포털":
     view_customer_portal()
 elif st.session_state.current_menu == "백홀 파트너(단순물류이송)":
     view_backhaul_matching()
-elif st.session_state.current_menu == "공급자 파트너 서치":
+elif st.session_state.current_menu == "지역별 공급자 파트너": # 명칭 변경 반영
     view_supplier_search()
 elif st.session_state.current_menu == "데이터 통합 관리":
     view_data_management()
