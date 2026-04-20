@@ -36,12 +36,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 지도가 포함된 공식 헤더 렌더링 함수 (GA & NJ 강조)
+# [최종 수정] 지도가 포함된 공식 헤더 렌더링 함수
 def render_official_header():
     # 미국 지도 SVG (조지아 강조)
     ga_map_svg = """
-    <svg viewBox="0 0 100 60" width="100" height="60" xmlns="http://www.w3.org/2000/svg">
-        <path d="M10,10 L90,10 L90,50 L10,50 Z" fill="#f1f5f9" />
+    <svg viewBox="0 0 100 60" width="100" height="60" xmlns="http://www.w3.org/2000/svg" style="display: block; margin: 0 auto;">
+        <rect width="100" height="60" fill="#f1f5f9" rx="5"/>
         <path d="M15,15 Q30,10 50,15 T85,15 L85,45 Q60,50 30,45 T15,45 Z" fill="#cbd5e1" />
         <circle cx="72" cy="38" r="6" fill="#E31837" />
         <text x="72" y="41" font-size="7" font-weight="900" fill="white" text-anchor="middle">GA</text>
@@ -50,32 +50,34 @@ def render_official_header():
     
     # 미국 지도 SVG (뉴저지 강조)
     nj_map_svg = """
-    <svg viewBox="0 0 100 60" width="100" height="60" xmlns="http://www.w3.org/2000/svg">
-        <path d="M10,10 L90,10 L90,50 L10,50 Z" fill="#f1f5f9" />
+    <svg viewBox="0 0 100 60" width="100" height="60" xmlns="http://www.w3.org/2000/svg" style="display: block; margin: 0 auto;">
+        <rect width="100" height="60" fill="#f1f5f9" rx="5"/>
         <path d="M15,15 Q30,10 50,15 T85,15 L85,45 Q60,50 30,45 T15,45 Z" fill="#cbd5e1" />
         <circle cx="80" cy="22" r="6" fill="#E31837" />
         <text x="80" y="25" font-size="7" font-weight="900" fill="white" text-anchor="middle">NJ</text>
     </svg>
     """
 
-    st.markdown(f"""
-    <div style="background-color: #f8fafc; padding: 20px 30px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between;">
-        <div style="text-align: center; width: 140px;">
+    # HTML 구조를 한 줄로 선언하여 렌더링 오류 방지
+    header_html = f"""
+    <div style="background-color: #f8fafc; padding: 25px 40px; border-radius: 15px; border: 2px solid #e2e8f0; margin-bottom: 30px; display: flex; align-items: center; justify-content: space-between; min-height: 120px; color: #000000;">
+        <div style="text-align: center; width: 150px; flex-shrink: 0;">
             {ga_map_svg}
-            <div style="font-size: 0.75rem; font-weight: 800; color: #0f172a; margin-top: 5px;">GEORGIA (GA)</div>
+            <div style="font-size: 0.8rem; font-weight: 800; color: #0f172a; margin-top: 8px;">GEORGIA (GA)</div>
         </div>
-        <div style="text-align: center; flex-grow: 1;">
-            <h1 style="margin: 0; font-size: 3.2rem; font-weight: 900; letter-spacing: -1px; line-height: 1;">
-                <span style="color: #E31837;">GIANT</span> <span style="color: #000000;">FOODSYSTEM</span>
+        <div style="text-align: center; flex-grow: 1; padding: 0 20px;">
+            <h1 style="margin: 0; font-size: 3.5rem; font-weight: 900; letter-spacing: -2px; line-height: 1.1; color: #000000;">
+                <span style="color: #E31837;">GIANT</span> FOODSYSTEM
             </h1>
-            <p style="font-size: 1.1rem; font-weight: 600; color: #475569; margin: 10px 0 0 0;">#1 K-food Distributor in USA</p>
+            <p style="font-size: 1.2rem; font-weight: 600; color: #475569; margin: 10px 0 0 0;">#1 K-food Distributor in USA</p>
         </div>
-        <div style="text-align: center; width: 140px;">
+        <div style="text-align: center; width: 150px; flex-shrink: 0;">
             {nj_map_svg}
-            <div style="font-size: 0.75rem; font-weight: 800; color: #0f172a; margin-top: 5px;">NEW JERSEY (NJ)</div>
+            <div style="font-size: 0.8rem; font-weight: 800; color: #0f172a; margin-top: 8px;">NEW JERSEY (NJ)</div>
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """
+    st.markdown(header_html, unsafe_allow_html=True)
 
 # 구글 시트 연결 설정
 try:
@@ -333,7 +335,6 @@ def view_help():
     [connections.gsheets]
     spreadsheet = "[https://docs.google.com/spreadsheets/d/본인_시트_아이디/edit#gid=0](https://docs.google.com/spreadsheets/d/본인_시트_아이디/edit#gid=0)"
     ```
-    3. 시트 내 `Clients`, `Orders`, `Trucks` 탭의 이름을 정확히 확인하세요.
     """)
 
 # 메인 라우팅 (Main Routing)
