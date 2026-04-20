@@ -1,7 +1,13 @@
 import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
 from streamlit_gsheets import GSheetsConnection
+
+# Plotly 라이브러리 안전하게 불러오기
+try:
+    import plotly.graph_objects as go
+    PLOTLY_AVAILABLE = True
+except ImportError:
+    PLOTLY_AVAILABLE = False
 
 # ==========================================
 # 1. 페이지 설정 및 회사 공식 스타일 적용
@@ -17,16 +23,46 @@ st.set_page_config(
 st.markdown("""
 <style>
     .block-container { padding-top: 1.5rem; }
-    .logo-container {
-        background-color: #f8fafc; 
-        padding: 15px; 
-        border-radius: 12px; 
-        text-align: center; 
-        border: 1px solid #e2e8f0; 
+    
+    /* 상단 타이틀 박스 디자인 */
+    .header-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background-color: #f8fafc;
+        padding: 15px 30px;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
         margin-bottom: 20px;
     }
-    .logo-text-giant { color: #E31837; font-weight: 900; }
-    .logo-text-food { color: #000000; font-weight: 900; }
+    
+    .header-logo-section {
+        text-align: center;
+        flex-grow: 1;
+    }
+    
+    .logo-text-giant { color: #E31837; font-weight: 900; font-size: 2.8rem; letter-spacing: -1px; margin: 0; }
+    .logo-text-food { color: #000000; font-weight: 900; font-size: 2.8rem; letter-spacing: -1px; margin: 0; }
+    .tagline { font-size: 1rem; font-weight: 600; color: #475569; margin-top: 5px; }
+
+    /* 지도 아이콘 스타일 */
+    .map-icon-container {
+        width: 100px;
+        height: 70px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .map-label {
+        font-size: 0.75rem;
+        font-weight: 800;
+        margin-top: 4px;
+        color: #0f172a;
+    }
+
+    /* 지표 카드 스타일 */
     .metric-card {
         background-color: #ffffff;
         border: 1px solid #e2e8f0;
@@ -40,14 +76,41 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 공용 로고 렌더링 함수
-def render_official_logo():
-    st.markdown("""
-    <div class="logo-container">
-        <h1 style="margin: 0; font-size: 2.8rem; font-weight: 900; letter-spacing: -1px;">
-            <span class="logo-text-giant">GIANT</span> <span class="logo-text-food">FOODSYSTEM</span>
-        </h1>
-        <p style="font-size: 1rem; font-weight: 600; color: #475569; margin-top: 5px;">#1 K-food Distributor in USA</p>
+# 지도가 포함된 공식 헤더 렌더링 함수
+def render_official_header():
+    # SVG 지도는 조지아(GA)와 뉴저지(NJ) 위치를 점으로 표시
+    ga_map_svg = """
+    <svg viewBox="0 0 100 60" width="80" height="48" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10,10 L90,10 L90,50 L10,50 Z" fill="#e2e8f0" />
+        <path d="M15,15 Q30,10 50,15 T85,15 L85,45 Q60,50 30,45 T15,45 Z" fill="#cbd5e1" />
+        <circle cx="72" cy="38" r="4" fill="#E31837" />
+    </svg>
+    """
+    
+    nj_map_svg = """
+    <svg viewBox="0 0 100 60" width="80" height="48" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10,10 L90,10 L90,50 L10,50 Z" fill="#e2e8f0" />
+        <path d="M15,15 Q30,10 50,15 T85,15 L85,45 Q60,50 30,45 T15,45 Z" fill="#cbd5e1" />
+        <circle cx="80" cy="22" r="4" fill="#E31837" />
+    </svg>
+    """
+
+    st.markdown(f"""
+    <div class="header-wrapper">
+        <div class="map-icon-container">
+            {ga_map_svg}
+            <div class="map-label">GEORGIA (GA)</div>
+        </div>
+        <div class="header-logo-section">
+            <h1 style="margin: 0;">
+                <span class="logo-text-giant">GIANT</span> <span class="logo-text-food">FOODSYSTEM</span>
+            </h1>
+            <p class="tagline">#1 K-food Distributor in USA</p>
+        </div>
+        <div class="map-icon-container">
+            {nj_map_svg}
+            <div class="map-label">NEW JERSEY (NJ)</div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -83,9 +146,13 @@ if 'current_menu' not in st.session_state:
     st.session_state.current_menu = "통합 주문 현황"
 
 # ==========================================
-# 2. 시각화 요소: 미국 네트워크 지도 (GA & NJ 중심)
+# 2. 시각화 요소: 미국 네트워크 지도 (Plotly)
 # ==========================================
 def render_network_map():
+    if not PLOTLY_AVAILABLE:
+        st.warning("지도 라이브러리(Plotly)가 설치되지 않았습니다. 도움말 메뉴를 확인하여 라이브러리를 설치하세요.")
+        return
+
     # 주요 거점 좌표 설정
     hubs = {
         'GA (Main)': [33.7490, -84.3880],
@@ -163,9 +230,9 @@ for menu in all_menus:
 # 4. 화면 뷰 1: 통합 주문 현황
 # ==========================================
 def view_unified_orders():
-    render_official_logo()
+    render_official_header()
     
-    # 🌟 주요 지표 요약 (3-4개 포인트)
+    # 주요 지표 요약
     total_orders = len(df_orders)
     total_pallets = df_orders['quantity'].sum() if not df_orders.empty else 0
     pending_trucks = len(df_trucks[df_trucks['assigned'] == 0])
@@ -212,7 +279,7 @@ def view_unified_orders():
 # 5. 화면 뷰 2: 공동구매 전용 관리
 # ==========================================
 def view_group_buy():
-    render_official_logo()
+    render_official_header()
     st.subheader("🤝 공동구매 전용 관리 (Group Buy Progress)")
     
     df_merged = pd.merge(df_orders, df_clients, on="client_id", how="left")
@@ -237,7 +304,7 @@ def view_group_buy():
 # 6. 화면 뷰 3: 트럭 배차 현황
 # ==========================================
 def view_truck_dispatch():
-    render_official_logo()
+    render_official_header()
     st.subheader("🚚 트럭 배차 현황 (Backhaul Dispatch)")
     
     days_map = {"화": "NC_SC", "수": "TX", "금": "FL"}
@@ -266,13 +333,13 @@ def view_truck_dispatch():
 # 7. 화면 뷰 4: 시스템 도움말
 # ==========================================
 def view_help():
-    render_official_logo()
+    render_official_header()
     st.subheader("❓ 시스템 관리 및 연동 가이드")
     
-    st.error("### 🚨 ModuleNotFoundError (Plotly) 해결법")
+    st.error("### 🚨 배포 오류 해결법 (ModuleNotFoundError)")
     st.markdown("""
-    지도 기능을 사용하기 위해 `plotly` 라이브러리가 필요합니다. 
-    GitHub의 **requirements.txt** 파일을 아래와 같이 수정해 주세요.
+    지도 기능을 위해 추가된 `plotly` 라이브러리를 서버가 인식해야 합니다. 
+    GitHub의 **requirements.txt** 파일을 아래 내용으로 완전히 덮어쓰기 하세요.
     
     ```text
     streamlit
