@@ -81,25 +81,20 @@ def render_official_header():
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. USDA MyMarketNews API 실시간 연동 엔진 (스마트 엑스레이 검증 도입)
+# 2. USDA MyMarketNews API 실시간 연동 엔진 (에러 로깅 강화)
 # ==========================================
 def fetch_usda_api_data(manual_id=None):
     """
     USDA MARS API 실시간 호출 로직.
-    - '/results' 경로를 복구하고 데이터 알맹이 판별기(X-ray)를 추가하여 껍데기 정보를 걸러냄.
+    - 실패 시 원본 에러 응답(res.text)을 캡처하여 정확한 실패 원인을 분석합니다.
     """
     api_key = st.secrets.get("USDA_API_KEY", "J5v4ZF527NWTsrcMJeB7jrXgfgRyPVzd")
     
-    # 시스템 로직 검증용 시뮬레이션 데이터 구축 (생략 없이 유지)
     demo_prices = [
         {'품목': '🍗 닭고기(Poultry)', '지역': 'GA (Hub)', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.52},
         {'품목': '🍗 닭고기(Poultry)', '지역': 'GA (Hub)', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.15},
         {'품목': '🍗 닭고기(Poultry)', '지역': 'TX', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.40},
         {'품목': '🍗 닭고기(Poultry)', '지역': 'TX', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.08},
-        {'품목': '🍗 닭고기(Poultry)', '지역': 'FL', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.58},
-        {'품목': '🍗 닭고기(Poultry)', '지역': 'FL', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.22},
-        {'품목': '🍗 닭고기(Poultry)', '지역': 'NJ (HQ)', '상태': '냉장', '부위': '통닭(Whole)', '가격': 1.65},
-        {'품목': '🍗 닭고기(Poultry)', '지역': 'NJ (HQ)', '상태': '냉동', '부위': '통닭(Whole)', '가격': 1.30},
         {'품목': '🥩 소고기(Beef)', '지역': 'TX', '상태': '냉장', '부위': '립아이(Ribeye)', '가격': 8.70},
         {'품목': '🥩 돼지고기(Pork)', '지역': 'GA (Hub)', '상태': '냉동', '부위': '무기후지 삼겹살(Mugifuji)', '가격': 4.90},
         {'품목': '🦐 새우(Shrimp)', '지역': 'FL', '상태': '냉동', '부위': '블랙타이거(Black Tiger)', '가격': 6.40},
@@ -108,18 +103,15 @@ def fetch_usda_api_data(manual_id=None):
     if not api_key:
         return pd.DataFrame(demo_prices), "API 키 미설정", {"error": "API 키가 없습니다."}, "", "error"
 
-    target_id = manual_id if manual_id else "aj_py047"
+    target_id = manual_id if manual_id else "2498"
     
-    # 🚨 진짜 알맹이(Data)가 숨어있을 수 있는 모든 상세 경로
+    # 🚨 경로 최적화
     data_urls = [
         f"https://marsapi.ams.usda.gov/services/v1.2/reports/{target_id}/data",
-        f"https://marsapi.ams.usda.gov/services/v1.2/reports/{target_id}/results", # 핵심: results 복구
-        f"https://marsapi.ams.usda.gov/services/v1.1/reports/{target_id}/data",
-        f"https://marsapi.ams.usda.gov/services/v1.1/reports/{target_id}/results"
+        f"https://marsapi.ams.usda.gov/services/v1.2/reports/{target_id}/results"
     ]
     meta_urls = [
-        f"https://marsapi.ams.usda.gov/services/v1.2/reports/{target_id}",
-        f"https://marsapi.ams.usda.gov/services/v1.1/reports/{target_id}"
+        f"https://marsapi.ams.usda.gov/services/v1.2/reports/{target_id}"
     ]
     
     auth_bytes = f"{api_key}:".encode('utf-8')
@@ -129,7 +121,7 @@ def fetch_usda_api_data(manual_id=None):
     debug_log = []
     raw_json_data = None
     success_url = ""
-    status_type = "error" # "success_data", "success_meta", "error"
+    status_type = "error"
     
     # 1. 진짜 알맹이(Data/Results) 집중 탐색
     for url in data_urls:
@@ -138,11 +130,10 @@ def fetch_usda_api_data(manual_id=None):
             if res.status_code == 200:
                 temp_json = res.json()
                 
-                # 스마트 엑스레이 검사: 껍데기인지 알맹이인지 Key 값을 뜯어봄
+                # 스마트 엑스레이 검사: 알맹이 여부 확인
                 is_real_data = False
                 if isinstance(temp_json, dict) and "results" in temp_json and len(temp_json["results"]) > 0:
                     sample_keys = str(temp_json["results"][0].keys()).lower()
-                    # 가격, 품목, 무게 등 실질적 데이터 키워드가 포함되어 있는지 엑스레이 검사
                     if any(keyword in sample_keys for keyword in ['price', 'value', 'cost', 'item', 'weight', 'volume', 'cut', 'yield']):
                         is_real_data = True
                 
@@ -150,19 +141,20 @@ def fetch_usda_api_data(manual_id=None):
                     raw_json_data = temp_json
                     success_url = url
                     status_type = "success_data"
-                    break # 진짜 알맹이를 찾았으니 즉시 탐색 종료!
+                    debug_log.append(f"✅ [알맹이 발견] URL: {url} (Status: 200)")
+                    break 
                 else:
-                    # 연결은 성공했지만 office_name 같은 껍데기만 줄 경우
                     raw_json_data = temp_json
                     success_url = url
-                    status_type = "success_meta" # 임시 저장해두고 더 깊은(/results) 경로 탐색 계속
-                    debug_log.append(f"경고: {url} 접속 성공했으나 알맹이 없음(표지 정보). 다음 경로 탐색 중...")
+                    status_type = "success_meta"
+                    debug_log.append(f"⚠️ [껍데기만 수신] URL: {url} (Status: 200)")
             else:
-                debug_log.append(f"조회 시도 -> URL: {url} | Status: {res.status_code}")
+                # 에러가 났을 때 USDA 서버의 진짜 응답을 캡처합니다!
+                debug_log.append(f"❌ [접속 실패] URL: {url} | 상태코드: {res.status_code} | 응답원문: {res.text[:150]}")
         except Exception as e:
-            debug_log.append(f"조회 예외 발생 -> {url} | {str(e)}")
+            debug_log.append(f"❌ [시스템 에러] URL: {url} | 예외: {str(e)}")
             
-    # 2. 알맹이를 끝내 못 찾았을 경우 껍데기라도 있는지 최종 확인
+    # 2. 알맹이를 못 찾았을 경우 껍데기(표지) 확인
     if status_type == "error":
         for url in meta_urls:
             try:
@@ -172,6 +164,8 @@ def fetch_usda_api_data(manual_id=None):
                     success_url = url
                     status_type = "success_meta"
                     break
+                else:
+                    debug_log.append(f"❌ [표지조차 없음] URL: {url} | 상태코드: {res.status_code}")
             except Exception as e:
                 pass
 
@@ -206,6 +200,15 @@ def load_all_data():
     return fetch_gsheet_data(sheet_url, "Clients"), fetch_gsheet_data(sheet_url, "Orders"), fetch_gsheet_data(sheet_url, "Trucks"), None
 
 df_clients, df_orders, df_trucks, error_msg = load_all_data()
+
+def ensure_columns(df, expected_cols):
+    for col in expected_cols:
+        if col not in df.columns: 
+            df[col] = 0 if 'quantity' in col or col in ['capacity', 'assigned'] else ""
+    return df
+
+df_orders = ensure_columns(df_orders, ["order_id", "client_id", "region", "product", "quantity_box", "quantity_pallet"])
+df_trucks = ensure_columns(df_trucks, ["truck_id", "region", "return_day", "capacity", "assigned"])
 
 # ==========================================
 # 4. 사이드바 구성
@@ -245,15 +248,14 @@ def view_market_price_comparison():
 
     with st.expander("🛠️ 실제 USDA 데이터 확보를 위한 테스트 도구 (강력 추천!)", expanded=True):
         st.markdown("""
-        **✅ 데이터가 확실히 들어있는 '검증된 리포트 번호' 리스트:**
-        - `3208` : National Weekly Boxed Beef (소고기 도매 - 알맹이 데이터 확실함!)
-        - `2498` : National Weekly Pork Report (돼지고기 주간 시세)
+        **✅ 가장 안정적인 '검증된 리포트 번호' (테스트 권장):**
+        - **`2498` : National Weekly Pork Report (돼지고기 시세 - 매우 안정적임!)**
         - `2824` : National Turkey Market (칠면조)
         
-        *💡 위 번호 중 하나를 아래에 입력하고 테스트해 보세요. 기존의 쓰레기 데이터(표지)가 아닌, 진짜 가격(Price)과 품목(Item)이 쏟아져 나오는 것을 확인하실 수 있습니다.*
+        *💡 기본값으로 세팅된 `2498`을 그대로 두고 [진짜 데이터 찾기 테스트] 버튼을 눌러보세요!*
         """)
         col_id, col_btn = st.columns([3, 1])
-        manual_report_id = col_id.text_input("통신 테스트용 리포트 ID 입력", value="3208")
+        manual_report_id = col_id.text_input("통신 테스트용 리포트 ID 입력", value="2498")
         if col_btn.button("진짜 데이터 찾기 테스트", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
@@ -272,7 +274,7 @@ def view_market_price_comparison():
         st.markdown("### 💻 수신된 실제 Raw Data (알맹이 판별기)")
         
         if status_type == "success_meta":
-            st.error(f"🚨 **[경고] 의미 없는 껍데기 데이터(표지)를 자동으로 걸러냈습니다!**\n\n조회하신 리포트 번호({manual_report_id})는 서버에서 정상 응답은 했으나, `office_name` 등의 껍데기 정보만 주고 실제 가격 정보는 숨겨두었거나 없습니다. 위 추천 리스트에 있는 `3208`을 입력해서 테스트해 보세요!")
+            st.error(f"🚨 **[경고] 의미 없는 껍데기 데이터(표지)를 자동으로 걸러냈습니다!**\n\n조회하신 리포트 번호({manual_report_id})는 서버에서 정상 응답은 했으나, 실제 가격 정보는 숨겨두었거나 없습니다. 추천 리스트에 있는 `2498`을 입력해서 테스트해 보세요!")
             if raw_json: st.json(raw_json)
             
         elif status_type == "success_data":
@@ -288,14 +290,14 @@ def view_market_price_comparison():
                 st.json(raw_json)
                 
         elif status_type == "error":
-            st.error("해당 번호의 리포트가 USDA 서버에 아예 존재하지 않거나 막혀있습니다.")
-            with st.expander("서버 오류 로그 상세 보기"):
+            st.error("해당 번호의 리포트가 USDA 서버에 아예 존재하지 않거나 막혀있습니다. (아래 로그에서 USDA 서버의 진짜 응답 메시지를 확인하세요)")
+            with st.expander("서버 오류 로그 상세 보기", expanded=True):
                 for log in st.session_state.get('api_debug_details', []): st.text(log)
 
     st.markdown("---")
     st.subheader("🛠️ 아래는 시뮬레이션용 차트 (데이터 교체 전 임시 화면입니다)")
     
-    # (이하 시뮬레이션 차트 로직 간소화 유지)
+    # 시뮬레이션 차트
     if not df_price.empty and PLOTLY_AVAILABLE:
         fig = px.bar(df_price.head(10), x='지역', y='가격', color='상태', title="[가짜 데이터] UI 테스트용 임시 차트")
         st.plotly_chart(fig, use_container_width=True)
