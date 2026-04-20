@@ -81,12 +81,38 @@ def render_official_header():
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. USDA MyMarketNews API 실시간 연동 엔진 (에러 로깅 강화)
+# 2. USDA MyMarketNews API 실시간 연동 엔진 (검색기 추가)
 # ==========================================
+
+@st.cache_data(ttl=3600)
+def fetch_all_usda_reports():
+    """
+    USDA 서버에 존재하는 '전체 리포트 목록'을 가져옵니다.
+    사용자가 올바른 숫자 ID를 찾을 수 있도록 도와주는 검색기능입니다.
+    """
+    api_key = st.secrets.get("USDA_API_KEY", "J5v4ZF527NWTsrcMJeB7jrXgfgRyPVzd")
+    auth_bytes = f"{api_key}:".encode('utf-8')
+    encoded_auth = base64.b64encode(auth_bytes).decode('utf-8')
+    headers = {"Authorization": f"Basic {encoded_auth}", "Accept": "application/json"}
+    
+    url = "https://marsapi.ams.usda.gov/services/v1.2/reports"
+    try:
+        res = requests.get(url, headers=headers, timeout=15)
+        if res.status_code == 200:
+            data = res.json()
+            # data 구조가 보통 [{"report_id": 1234, "report_title": "..."}, ...] 형태이거나
+            # {"results": [...]} 형태입니다.
+            if isinstance(data, list):
+                return pd.DataFrame(data)
+            elif isinstance(data, dict) and "results" in data:
+                return pd.DataFrame(data["results"])
+    except Exception as e:
+        pass
+    return pd.DataFrame()
+
 def fetch_usda_api_data(manual_id=None):
     """
-    USDA MARS API 실시간 호출 로직.
-    - 실패 시 원본 에러 응답(res.text)을 캡처하여 정확한 실패 원인을 분석합니다.
+    특정 리포트 ID의 상세 가격 데이터를 가져옵니다.
     """
     api_key = st.secrets.get("USDA_API_KEY", "J5v4ZF527NWTsrcMJeB7jrXgfgRyPVzd")
     
@@ -103,9 +129,13 @@ def fetch_usda_api_data(manual_id=None):
     if not api_key:
         return pd.DataFrame(demo_prices), "API 키 미설정", {"error": "API 키가 없습니다."}, "", "error"
 
-    target_id = manual_id if manual_id else "lm_xb403"
+    # 영문 ID 입력 시 차단 및 안내
+    if manual_id and not manual_id.isdigit():
+        return pd.DataFrame(demo_prices), "영문 ID 입력 오류 (숫자로 입력해주세요)", {"error": "API 요청 주소에는 영문(Slug ID)이 아닌 '숫자' 리포트 ID만 입력해야 합니다."}, "", "error"
+
+    target_id = manual_id if manual_id else "2461"
     
-    # 🚨 경로 최적화
+    # 🚨 경로 최적화 (오직 Data / Results만 집중 타격)
     data_urls = [
         f"https://marsapi.ams.usda.gov/services/v1.2/reports/{target_id}/data",
         f"https://marsapi.ams.usda.gov/services/v1.2/reports/{target_id}/results"
@@ -149,7 +179,6 @@ def fetch_usda_api_data(manual_id=None):
                     status_type = "success_meta"
                     debug_log.append(f"⚠️ [껍데기만 수신] URL: {url} (Status: 200)")
             else:
-                # 에러가 났을 때 USDA 서버의 진짜 응답을 캡처합니다!
                 debug_log.append(f"❌ [접속 실패] URL: {url} | 상태코드: {res.status_code} | 응답원문: {res.text[:150]}")
         except Exception as e:
             debug_log.append(f"❌ [시스템 에러] URL: {url} | 예외: {str(e)}")
@@ -246,18 +275,32 @@ def view_market_price_comparison():
     </div>
     """, unsafe_allow_html=True)
 
-    with st.expander("🛠️ 실제 USDA 데이터 확보를 위한 테스트 도구 (강력 추천!)", expanded=True):
+    with st.expander("🛠️ 데이터 매핑을 위한 리포트 번호 발굴 도구 (여기를 펼쳐주세요!)", expanded=True):
         st.markdown("""
-        **✅ 가장 안정적인 '검증된 최신 영문 Slug ID' (테스트 권장):**
-        USDA가 예전 숫자 ID(2498 등)를 폐기하고 아래의 **영문 Slug ID**로 시스템을 전면 개편했습니다!
-        
-        - **`lm_xb403` : National Daily Boxed Beef (소고기 도매 시세 - 100% 알맹이 보장!)**
-        - **`lm_pk602` : National Daily Pork Report (돼지고기 시세 - 100% 알맹이 보장!)**
-        
-        *💡 기본값으로 세팅된 `lm_xb403`을 그대로 두고 [진짜 데이터 찾기 테스트] 버튼을 눌러보세요!*
+        **🚨 영문 Slug ID 오류 원인 파악 완료:** USDA API는 호출 주소에 영문(`lm_xb403`)이 아닌 **숫자로 된 고유 Report ID**만 허용합니다!
+        더 이상 번호를 찍어 맞출 필요 없이, 아래의 **[전체 리포트 목록 불러오기]**를 통해 현재 USDA 서버에 등록된 수백 개의 진짜 숫자 번호를 직접 검색해 보세요.
         """)
+        
+        # 1. 전체 리포트 검색기 버튼
+        if st.button("🔍 1. 현재 살아있는 USDA 전체 리포트 목록 불러오기", type="primary"):
+            with st.spinner("USDA 서버에서 전체 리포트 메뉴판을 가져오고 있습니다..."):
+                df_reports = fetch_all_usda_reports()
+                if not df_reports.empty:
+                    st.success(f"✅ 총 {len(df_reports)}개의 리포트 목록을 성공적으로 불러왔습니다!")
+                    # 사용자가 보기 편하게 필수 컬럼만 필터링
+                    display_cols = [c for c in ['report_id', 'report_title', 'slug_name', 'market_type'] if c in df_reports.columns]
+                    st.dataframe(df_reports[display_cols], height=300, use_container_width=True)
+                    st.info("👆 위 표의 우측 상단 '돋보기 아이콘'을 누르고 `Beef`, `Pork`, `Broiler` 등을 검색하여, 좌측의 **`report_id` (숫자)**를 찾아주세요!")
+                else:
+                    st.error("전체 리포트 목록을 불러오지 못했습니다. API 키 문제이거나 서버 응답 지연입니다.")
+        
+        st.markdown("---")
+        
+        # 2. 숫자 ID 입력 및 테스트
+        st.markdown("**🔍 2. 위에서 찾은 숫자 ID(Report ID)로 알맹이 데이터 추출 테스트**")
         col_id, col_btn = st.columns([3, 1])
-        manual_report_id = col_id.text_input("통신 테스트용 Slug ID 입력", value="lm_xb403")
+        # 기본값으로 가장 확률이 높은 소고기 관련 숫자 ID(2461: National Daily Boxed Beef Cuts)를 배치
+        manual_report_id = col_id.text_input("통신 테스트용 '숫자' Report ID 입력 (예: 2461, 3208 등)", value="2461")
         if col_btn.button("진짜 데이터 찾기 테스트", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
@@ -276,7 +319,7 @@ def view_market_price_comparison():
         st.markdown("### 💻 수신된 실제 Raw Data (알맹이 판별기)")
         
         if status_type == "success_meta":
-            st.error(f"🚨 **[경고] 의미 없는 껍데기 데이터(표지)를 자동으로 걸러냈습니다!**\n\n조회하신 리포트 번호({manual_report_id})는 서버에서 정상 응답은 했으나, 실제 가격 정보는 숨겨두었거나 없습니다. 추천 리스트에 있는 `lm_xb403`을 입력해서 테스트해 보세요!")
+            st.error(f"🚨 **[경고] 의미 없는 껍데기 데이터(표지)를 자동으로 걸러냈습니다!**\n\n조회하신 숫자 번호({manual_report_id})는 서버에서 정상 응답은 했으나, 실제 가격 정보는 숨겨두었거나 없습니다. 위 목록에서 다른 숫자 ID를 찾아 입력해 보세요!")
             if raw_json: st.json(raw_json)
             
         elif status_type == "success_data":
@@ -292,8 +335,8 @@ def view_market_price_comparison():
                 st.json(raw_json)
                 
         elif status_type == "error":
-            st.error("해당 번호의 리포트가 USDA 서버에 아예 존재하지 않거나 막혀있습니다. (아래 로그에서 USDA 서버의 진짜 응답 메시지를 확인하세요)")
-            with st.expander("서버 오류 로그 상세 보기", expanded=True):
+            st.error("해당 번호의 리포트가 USDA 서버에 존재하지 않거나 막혀있습니다. 숫자 ID가 맞는지 확인해 주세요.")
+            with st.expander("서버 오류 로그 상세 보기", expanded=False):
                 for log in st.session_state.get('api_debug_details', []): st.text(log)
 
     st.markdown("---")
