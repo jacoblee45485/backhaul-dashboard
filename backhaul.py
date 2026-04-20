@@ -268,6 +268,20 @@ def view_truck_dispatch():
 def view_help():
     render_official_logo()
     st.subheader("❓ 시스템 관리 및 연동 가이드")
+    
+    st.error("### 🚨 ModuleNotFoundError (Plotly) 해결법")
+    st.markdown("""
+    지도 기능을 사용하기 위해 `plotly` 라이브러리가 필요합니다. 
+    GitHub의 **requirements.txt** 파일을 아래와 같이 수정해 주세요.
+    
+    ```text
+    streamlit
+    pandas
+    st-gsheets-connection
+    plotly
+    ```
+    """)
+    
     st.info("### 🔗 구글 시트 연결 (Secrets)")
     st.markdown("""
     1. **Streamlit Settings** -> **Secrets** 클릭
