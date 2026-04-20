@@ -107,14 +107,15 @@ def load_all_data():
 
 df_clients, df_orders, df_trucks, error_msg = load_all_data()
 
-# 컬럼 존재 보장
+# 컬럼 존재 보장 (수량 단위를 박스와 팔레트로 분리)
 def ensure_columns(df, expected_cols):
     for col in expected_cols:
-        if col not in df.columns: df[col] = 0 if col in ['quantity', 'capacity', 'assigned'] else ""
+        if col not in df.columns: 
+            df[col] = 0 if 'quantity' in col or col in ['capacity', 'assigned'] else ""
     return df
 
 df_clients = ensure_columns(df_clients, ["client_id", "name", "type"])
-df_orders = ensure_columns(df_orders, ["order_id", "client_id", "region", "product", "quantity"])
+df_orders = ensure_columns(df_orders, ["order_id", "client_id", "region", "product", "quantity_box", "quantity_pallet"])
 df_trucks = ensure_columns(df_trucks, ["truck_id", "region", "return_day", "capacity", "assigned"])
 
 # ==========================================
@@ -151,10 +152,6 @@ for menu in all_menus:
 # ==========================================
 
 def render_network_map():
-    """
-    뉴저지 본사(HQ)와 조지아 물류 허브(Hub)를 중심으로 한 전국 네트워크 시각화
-    가독성을 위해 선 두께를 가늘게 조정하고 라벨 폰트 크기 최적화
-    """
     if not PLOTLY_AVAILABLE:
         st.warning("지도 라이브러리 사용 불가")
         return
@@ -168,7 +165,6 @@ def render_network_map():
     fig = go.Figure()
     hub_lat, hub_lon = hubs['GA (Logistics Hub)']
     
-    # 연결선 렌더링 (가늘고 세련되게 수정: width 3.5 -> 1.2)
     for name, coord in hubs.items():
         if 'GA' not in name:
             line_color = '#E31837' if 'NJ' in name else '#94a3b8' 
@@ -181,7 +177,6 @@ def render_network_map():
                 opacity=0.7
             ))
     
-    # 거점 라벨링 (지역명은 크게, 역할 설명은 작게 분리)
     processed_names = []
     for n in hubs.keys():
         state_name = n.split(' (')[0]
@@ -198,24 +193,12 @@ def render_network_map():
         mode='markers+text', 
         textposition="top center", 
         textfont=dict(size=14, color="#0f172a"),
-        marker=dict(
-            size=14, 
-            color=colors, 
-            line=dict(width=2, color='white')
-        )
+        marker=dict(size=14, color=colors, line=dict(width=2, color='white'))
     ))
     
     fig.update_layout(
-        geo=dict(
-            scope='usa', 
-            projection_type='albers usa',
-            showland=True,
-            landcolor="#f8fafc",
-            subunitcolor="#cbd5e1" 
-        ), 
-        margin=dict(l=0, r=0, t=0, b=0), 
-        height=500, 
-        showlegend=False
+        geo=dict(scope='usa', projection_type='albers usa', showland=True, landcolor="#f8fafc", subunitcolor="#cbd5e1"), 
+        margin=dict(l=0, r=0, t=0, b=0), height=500, showlegend=False
     )
     st.plotly_chart(fig, use_container_width=True)
 
@@ -223,7 +206,10 @@ def view_unified_orders():
     render_official_header()
     col1, col2, col3, col4 = st.columns(4)
     with col1: st.markdown(f'<div class="metric-card"><div class="metric-label">총 오더</div><div class="metric-value">{len(df_orders)}건</div></div>', unsafe_allow_html=True)
-    with col2: st.markdown(f'<div class="metric-card"><div class="metric-label">총 물량</div><div class="metric-value">{df_orders["quantity"].sum()} PLT</div></div>', unsafe_allow_html=True)
+    with col2: 
+        total_box = df_orders["quantity_box"].sum()
+        total_plt = df_orders["quantity_pallet"].sum()
+        st.markdown(f'<div class="metric-card"><div class="metric-label">전체 물량 (Box / PLT)</div><div class="metric-value">{int(total_box)} / {int(total_plt)}</div></div>', unsafe_allow_html=True)
     with col3: st.markdown(f'<div class="metric-card"><div class="metric-label">운행 트럭</div><div class="metric-value">{len(df_trucks)}대</div></div>', unsafe_allow_html=True)
     with col4: st.markdown(f'<div class="metric-card"><div class="metric-label">허브 매칭률</div><div class="metric-value">72%</div></div>', unsafe_allow_html=True)
     st.markdown("---")
@@ -232,16 +218,18 @@ def view_unified_orders():
         st.subheader("🌐 NJ 본사 & GA 허브 네트워크")
         render_network_map()
     with c2:
-        st.subheader("📍 지역별 실시간 수요")
-        region_sum = df_orders.groupby('region')['quantity'].sum().reset_index()
-        st.dataframe(region_sum, use_container_width=True, hide_index=True)
+        st.subheader("📍 지역별 실시간 수요 (PLT 기준)")
+        if not df_orders.empty:
+            region_sum = df_orders.groupby('region')[['quantity_box', 'quantity_pallet']].sum().reset_index()
+            st.dataframe(region_sum.rename(columns={'region':'지역', 'quantity_box':'Box', 'quantity_pallet':'Pallet'}), use_container_width=True, hide_index=True)
+        else:
+            st.info("데이터가 없습니다.")
 
 def view_customer_portal():
     render_official_header()
     st.subheader("👤 수요자(Customer) 포털")
     st.markdown("고객사별 주문 상태 및 공동구매 참여 현황을 관리합니다.")
 
-    # 고객 요약 지표
     c1, c2, c3 = st.columns(3)
     with c1:
         active_customers = df_clients[df_clients['type'] != 'Backhaul_Partner'].shape[0]
@@ -263,7 +251,7 @@ def view_customer_portal():
             merged = pd.merge(df_orders, df_clients, on='client_id', how='left')
             if search_term:
                 merged = merged[merged['name'].str.contains(search_term, case=False, na=False)]
-            st.dataframe(merged[['order_id', 'name', 'product', 'quantity', 'region']], use_container_width=True, hide_index=True)
+            st.dataframe(merged[['order_id', 'name', 'product', 'quantity_box', 'quantity_pallet', 'region']], use_container_width=True, hide_index=True)
         else:
             st.info("조회할 주문 데이터가 없습니다.")
 
@@ -272,8 +260,8 @@ def view_customer_portal():
         st.info("최소 주문 수량(MOQ) 충족 시 조지아 허브에서 일괄 발송됩니다.")
         
         gb_items = [
-            {"품목": "CJ 비비고 만두 (Pallet)", "지역": "TX", "참여도": 0.85, "잔여": "3 PLT"},
-            {"품목": "신라면 컵 (Bulk)", "지역": "FL", "참여도": 0.40, "잔여": "12 PLT"},
+            {"품목": "CJ 비비고 만두", "지역": "TX", "참여도": 0.85, "잔여": "3 PLT"},
+            {"품목": "신라면 컵", "지역": "FL", "참여도": 0.40, "잔여": "12 PLT"},
             {"품목": "청정원 고추장", "지역": "NC", "참여도": 1.0, "잔여": "완료"}
         ]
         
@@ -303,6 +291,7 @@ def view_backhaul_matching():
 def view_data_management():
     render_official_header()
     st.subheader("⚙️ 데이터 통합 관리")
+    st.write("📊 **주문 데이터 관리** (Box / Pallet 개별 수정 가능)")
     st.data_editor(df_orders, use_container_width=True, num_rows="dynamic")
 
 def view_supplier_search():
