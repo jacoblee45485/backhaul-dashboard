@@ -179,17 +179,18 @@ def render_network_map():
     # 거점 포인트 및 주 이름 라벨 표시
     lats = [v[0] for v in hubs.values()]
     lons = [v[1] for v in hubs.values()]
-    names = list(hubs.keys())
+    # 텍스트가 굵게 보이도록 HTML 태그 적용
+    names = [f"<b>{n}</b>" for n in hubs.keys()]
     
     # 역할별 색상 및 크기 구분
     colors = []
     sizes = []
-    for n in names:
+    for n in hubs.keys():
         if 'Headquarters' in n:
             colors.append('#000000') # 본사: 블랙
             sizes.append(18)
         elif 'Logistics Hub' in n:
-            colors.append('#E31837') # 허브: 레그
+            colors.append('#E31837') # 허브: 레드
             sizes.append(16)
         else:
             colors.append('#0F4C81') # 일반 거점: 블루
@@ -202,7 +203,8 @@ def render_network_map():
         text = names,
         mode = 'markers+text',
         textposition = "top center",
-        textfont = dict(family="sans serif", size=11, color="#0f172a", font_weight="bold"),
+        # font_weight 제거 및 폰트 설정
+        textfont = dict(family="sans serif", size=11, color="#0f172a"),
         marker = dict(
             size = sizes,
             color = colors,
