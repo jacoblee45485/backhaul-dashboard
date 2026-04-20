@@ -53,7 +53,7 @@ def render_official_header():
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. 강화된 데이터 로드 로직 (400 에러 방지)
+# 2. 강화된 데이터 로드 로직 (400 에러 및 KeyError 방지)
 # ==========================================
 
 @st.cache_data(ttl=60)
@@ -61,27 +61,28 @@ def fetch_gsheet_data(sheet_url, worksheet_name):
     """
     구글 시트 라이브러리가 실패할 경우를 대비한 하이브리드 로더
     """
+    df = pd.DataFrame()
     try:
         # 방식 1: 전용 커넥션 시도
         conn = st.connection("gsheets", type=GSheetsConnection)
-        return conn.read(spreadsheet=sheet_url, worksheet=worksheet_name)
-    except Exception as e:
-        # 방식 2: Pandas를 이용한 직접 CSV 내보내기 링크 시도 (400 에러 우회용)
+        df = conn.read(spreadsheet=sheet_url, worksheet=worksheet_name)
+    except Exception:
+        # 방식 2: Pandas를 이용한 직접 CSV 내보내기 링크 시도
         try:
-            # 주소에서 ID 추출
             if "/d/" in sheet_url:
                 sheet_id = sheet_url.split("/d/")[1].split("/")[0]
-                # 탭 이름으로 CSV 다운로드 링크 생성
                 csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={urllib.parse.quote(worksheet_name)}"
-                return pd.read_csv(csv_url)
-            else:
-                raise ValueError("올바르지 않은 시트 주소 형식입니다.")
+                df = pd.read_csv(csv_url)
         except Exception as e2:
             st.error(f"'{worksheet_name}' 탭을 읽어오지 못했습니다. (에러: {e2})")
             return pd.DataFrame()
+    
+    # 컬럼명 전처리: 공백 제거 및 소문자화 (KeyError 방지 핵심)
+    if not df.empty:
+        df.columns = [str(c).strip().lower() for c in df.columns]
+    return df
 
 def load_all_data():
-    # Secrets에서 주소 가져오기
     try:
         sheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
     except:
@@ -98,10 +99,16 @@ def load_all_data():
 
 df_clients, df_orders, df_trucks, error_msg = load_all_data()
 
-# 데이터 기본 구조 보장 (에러 시에도 앱이 깨지지 않게 방어)
-if df_clients.empty: df_clients = pd.DataFrame(columns=["client_id", "name", "type"])
-if df_orders.empty: df_orders = pd.DataFrame(columns=["order_id", "client_id", "region", "product", "quantity"])
-if df_trucks.empty: df_trucks = pd.DataFrame(columns=["truck_id", "region", "return_day", "capacity", "assigned"])
+# 데이터 기본 구조 보장 (에러 시에도 앱이 깨지지 않게 방어 및 컬럼 존재 보장)
+def ensure_columns(df, expected_cols):
+    for col in expected_cols:
+        if col not in df.columns:
+            df[col] = 0 if col == 'quantity' or col == 'capacity' or col == 'assigned' else ""
+    return df
+
+df_clients = ensure_columns(df_clients, ["client_id", "name", "type"])
+df_orders = ensure_columns(df_orders, ["order_id", "client_id", "region", "product", "quantity"])
+df_trucks = ensure_columns(df_trucks, ["truck_id", "region", "return_day", "capacity", "assigned"])
 
 # ==========================================
 # 3. 사이드바 및 레이아웃
@@ -154,11 +161,16 @@ def view_unified_orders():
         st.error(f"연결 상태 확인 필요: {error_msg}")
         st.info("💡 해결 방법: 구글 시트 우측 상단 '공유' -> '링크가 있는 모든 사용자'로 설정을 꼭 확인해 주세요.")
     
-    # 지표 요약
+    # 지표 요약 (KeyError 방지 로직 적용)
+    total_orders = len(df_orders)
+    # 컬럼이 확실히 존재하는지 확인 후 합계 계산
+    total_qty = df_orders["quantity"].sum() if "quantity" in df_orders.columns else 0
+    total_trucks = len(df_trucks)
+    
     col1, col2, col3, col4 = st.columns(4)
-    with col1: st.markdown(f'<div class="metric-card"><div class="metric-label">총 주문</div><div class="metric-value">{len(df_orders)}건</div></div>', unsafe_allow_html=True)
-    with col2: st.markdown(f'<div class="metric-card"><div class="metric-label">총 물량</div><div class="metric-value">{df_orders["quantity"].sum() if not df_orders.empty else 0} PLT</div></div>', unsafe_allow_html=True)
-    with col3: st.markdown(f'<div class="metric-card"><div class="metric-label">대기 차량</div><div class="metric-value">{len(df_trucks)}대</div></div>', unsafe_allow_html=True)
+    with col1: st.markdown(f'<div class="metric-card"><div class="metric-label">총 주문</div><div class="metric-value">{total_orders}건</div></div>', unsafe_allow_html=True)
+    with col2: st.markdown(f'<div class="metric-card"><div class="metric-label">총 물량</div><div class="metric-value">{total_qty} PLT</div></div>', unsafe_allow_html=True)
+    with col3: st.markdown(f'<div class="metric-card"><div class="metric-label">대기 차량</div><div class="metric-value">{total_trucks}대</div></div>', unsafe_allow_html=True)
     with col4: st.markdown(f'<div class="metric-card"><div class="metric-label">네트워크 상태</div><div class="metric-value">Active</div></div>', unsafe_allow_html=True)
     
     st.markdown("---")
@@ -171,26 +183,27 @@ def view_unified_orders():
         if df_orders.empty:
             st.warning("연결된 주문 데이터가 없습니다.")
         else:
-            st.dataframe(df_orders[['client_id', 'product', 'quantity']], use_container_width=True, hide_index=True)
+            # 표시할 컬럼이 존재하는지 확인 후 안전하게 출력
+            display_cols = [c for c in ['client_id', 'product', 'quantity'] if c in df_orders.columns]
+            st.dataframe(df_orders[display_cols], use_container_width=True, hide_index=True)
 
 def view_help():
     render_official_header()
-    st.subheader("🛠️ 연결 문제 해결 가이드 (HTTP 400 대응)")
+    st.subheader("🛠️ 연결 및 데이터 오류 해결 가이드")
     st.markdown("""
-    ### 1. 구글 시트 공유 설정 확인 (필수)
-    구글 시트 우측 상단 **[공유]** 버튼을 누른 후, 하단의 일반 액세스를 반드시 **'링크가 있는 모든 사용자'**로 변경해야 합니다. **'제한됨'** 상태이면 어떤 주소를 넣어도 400 에러가 발생합니다.
+    ### 1. KeyError (Column missing) 해결
+    - 구글 시트의 첫 번째 줄(헤더)에 **quantity**, **product**, **client_id** 등 필요한 이름이 정확히 있는지 확인하세요.
+    - 현재 시스템은 대소문자를 구분하지 않도록(자동 소문자 변환) 보완되었습니다.
     
-    ### 2. Secrets 주소 다시 확인
-    아래 주소 형식을 권장합니다:
-    ```text
-    [https://docs.google.com/spreadsheets/d/15MPyXcHcv93E4f1qeswewTWfDensVDp2EZxLHwOLvAU/edit](https://docs.google.com/spreadsheets/d/15MPyXcHcv93E4f1qeswewTWfDensVDp2EZxLHwOLvAU/edit)
-    ```
+    ### 2. 구글 시트 공유 설정 확인 (필수)
+    - 구글 시트 우측 상단 **[공유]** 버튼 클릭
+    - 하단의 일반 액세스를 **'링크가 있는 모든 사용자'**로 변경
     
     ### 3. 탭 이름 일치 확인
-    구글 시트 하단 탭 이름이 아래와 정확히 일치하는지 확인하세요 (대소문자 구분):
-    - **Clients**
-    - **Orders**
-    - **Trucks**
+    - 구글 시트 하단 탭 이름이 아래와 정확히 일치하는지 확인하세요:
+        - **Clients**
+        - **Orders**
+        - **Trucks**
     """)
 
 # 라우팅
