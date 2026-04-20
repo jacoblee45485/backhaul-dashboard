@@ -7,6 +7,7 @@ import re
 # Plotly 라이브러리 안전하게 불러오기
 try:
     import plotly.graph_objects as go
+    import plotly.express as px
     PLOTLY_AVAILABLE = True
 except ImportError:
     PLOTLY_AVAILABLE = False
@@ -132,7 +133,15 @@ st.sidebar.markdown("""
 st.sidebar.markdown("---")
 
 # 메뉴 버튼들
-all_menus = ["통합 주문 현황", "수요자(Customer) 포털", "백홀 파트너(단순물류이송)", "지역별 공급자 파트너", "데이터 통합 관리", "시스템 도움말"]
+all_menus = [
+    "통합 주문 현황", 
+    "수요자(Customer) 포털", 
+    "백홀 파트너(단순물류이송)", 
+    "지역별 공급자 파트너", 
+    "품목별 시장가 비교", # 신규 추가
+    "데이터 통합 관리", 
+    "시스템 도움말"
+]
 for menu in all_menus:
     if st.sidebar.button(menu, key=f"sidebar_{menu}", use_container_width=True):
         st.session_state.current_menu = menu
@@ -152,7 +161,6 @@ qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={app_ur
 st.sidebar.image(qr_url, caption="QR 코드를 스캔하여 접속", width=150)
 st.sidebar.markdown(f"**접속 링크:**")
 st.sidebar.code(app_url, language=None)
-st.sidebar.caption("위 링크를 복사하여 담당자에게 전달하세요.")
 
 # ==========================================
 # 4. 시각화 및 화면 로직
@@ -205,11 +213,9 @@ def view_unified_orders():
 def view_customer_portal():
     render_official_header()
     st.subheader("👤 수요자(Customer) 포털")
-    st.info("고객사별 공동구매 참여 및 배송 상태를 확인합니다.")
     tab1, tab2 = st.tabs(["주문 추적", "공동구매(Group Buy)"])
     with tab1:
         if not df_orders.empty:
-            # 인덱스를 1부터 시작하도록 조정하여 표시
             display_orders = df_orders.copy()
             display_orders.index = range(1, len(display_orders) + 1)
             st.dataframe(display_orders, use_container_width=True)
@@ -225,6 +231,50 @@ def view_backhaul_matching():
     <div class="supplier-card"><b>🥩 Highland Meats (TX)</b><br>조지아 허브행 냉장 소고기 이송 가능</div>
     <div class="supplier-card"><b>🏢 NJ HQ Internal</b><br>본사 -> 조지아 허브 재고 보충 물량</div>
     """, unsafe_allow_html=True)
+
+def view_market_price_comparison():
+    render_official_header()
+    st.subheader("🍗 냉장 vs 냉동 닭고기 시장가 비교 분석")
+    st.markdown("지역별 주요 공급업체의 실시간 시세 비교 데이터입니다. (단위: LB당 USD)")
+
+    # 샘플 시세 데이터 (향후 구글 시트에 'Prices' 탭을 만들어 연동 가능)
+    price_data = {
+        '지역': ['GA (Hub)', 'GA (Hub)', 'TX', 'TX', 'FL', 'FL', 'NJ (HQ)', 'NJ (HQ)'],
+        '상태': ['냉장', '냉동', '냉장', '냉동', '냉장', '냉동', '냉장', '냉동'],
+        '가격': [1.45, 1.10, 1.38, 1.05, 1.52, 1.15, 1.60, 1.25]
+    }
+    df_price = pd.DataFrame(price_data)
+
+    col1, col2 = st.columns([2, 1])
+
+    with col1:
+        if PLOTLY_AVAILABLE:
+            fig = px.bar(df_price, x='지역', y='가격', color='상태', barmode='group',
+                         title="지역별 냉장/냉동 닭고기 단가 비교",
+                         color_discrete_map={'냉장': '#E31837', '냉동': '#0F4C81'})
+            fig.update_layout(yaxis_title="가격 ($/LB)", xaxis_title="지역 허브")
+            st.plotly_chart(fig, use_container_width=True)
+    
+    with col2:
+        st.markdown("### 💡 구매 전략 가이드")
+        avg_fresh = df_price[df_price['상태']=='냉장']['가격'].mean()
+        avg_frozen = df_price[df_price['상태']=='냉동']['가격'].mean()
+        diff = ((avg_fresh - avg_frozen) / avg_frozen) * 100
+
+        st.info(f"""
+        **평균 시세 분석:**
+        - 냉장 평균: **${avg_fresh:.2f}**
+        - 냉동 평균: **${avg_frozen:.2f}**
+        - 가격 격차: 약 **{diff:.1f}%**
+        
+        **백홀 활용 팁:**
+        - TX 지역 냉동 닭 단가가 가장 낮음 (${df_price[(df_price['지역']=='TX') & (df_price['상태']=='냉동')]['가격'].values[0]})
+        - TX 배송 후 복귀 차량에 냉동 닭 상차 시 물류비 상쇄 효과 극대화 가능
+        """)
+
+    st.markdown("---")
+    st.write("### 📊 상세 가격표 (LB당)")
+    st.table(df_price.pivot(index='지역', columns='상태', values='가격'))
 
 def view_data_management():
     render_official_header()
@@ -245,6 +295,8 @@ elif st.session_state.current_menu == "백홀 파트너(단순물류이송)":
     view_backhaul_matching()
 elif st.session_state.current_menu == "지역별 공급자 파트너":
     view_supplier_search()
+elif st.session_state.current_menu == "품목별 시장가 비교":
+    view_market_price_comparison()
 elif st.session_state.current_menu == "데이터 통합 관리":
     view_data_management()
 elif st.session_state.current_menu == "시스템 도움말":
