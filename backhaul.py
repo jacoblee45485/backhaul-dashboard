@@ -291,32 +291,50 @@ def view_truck_dispatch():
                         st.button(f"{truck['truck_id']} 배차 확정", key=f"d_btn_{truck['truck_id']}")
 
 # ==========================================
-# 7. 화면 뷰 4: 시스템 도움말
+# 7. 화면 뷰 4: 배포 가이드 및 도움말 (Help & Deployment)
 # ==========================================
 def view_help():
     render_official_header()
-    st.subheader("❓ 시스템 관리 및 연동 가이드")
+    st.subheader("🚀 시스템 배포 단계별 가이드")
     
-    st.error("### 🚨 배포 오류 해결법 (Plotly 라이브러리)")
-    st.markdown("""
-    지도 기능이 작동하지 않는다면 GitHub의 **requirements.txt** 파일을 아래와 같이 수정하세요.
-    ```text
-    streamlit
-    pandas
-    st-gsheets-connection
-    plotly
-    ```
-    """)
+    col1, col2 = st.columns(2)
     
-    st.info("### 🔗 구글 시트 연결 (Secrets)")
-    st.markdown("""
-    1. **Streamlit Settings** -> **Secrets** 클릭
-    2. 아래 형식으로 입력 (URL은 본인 시트 주소로 교체):
-    ```toml
-    [connections.gsheets]
-    spreadsheet = "[https://docs.google.com/spreadsheets/d/본인_시트_아이디/edit#gid=0](https://docs.google.com/spreadsheets/d/본인_시트_아이디/edit#gid=0)"
-    ```
-    """)
+    with col1:
+        st.info("### 1단계: GitHub 파일 업데이트")
+        st.markdown("""
+        배포를 위해 GitHub 저장소에 아래 두 파일이 있어야 합니다.
+        
+        1. **`backhaul.py`**: Canvas의 전체 코드를 복사해서 붙여넣기 하세요.
+        2. **`requirements.txt`**: 아래 내용을 그대로 복사해서 새 파일로 만드세요.
+        ```text
+        streamlit
+        pandas
+        st-gsheets-connection
+        plotly
+        ```
+        """)
+        
+        st.success("### 2단계: Streamlit Cloud 가입")
+        st.markdown("""
+        - [share.streamlit.io](https://share.streamlit.io/)에 접속합니다.
+        - GitHub 계정으로 로그인한 뒤, **[Create app]** 버튼을 누릅니다.
+        - 본인의 저장소와 `backhaul.py` 파일을 선택하여 배포합니다.
+        """)
+
+    with col2:
+        st.warning("### 3단계: 구글 시트 연결 (Secrets)")
+        st.markdown("""
+        배포 후 앱 설정(Settings) -> **Secrets** 메뉴에 아래 설정을 넣어야 데이터가 나옵니다.
+        
+        ```toml
+        [connections.gsheets]
+        spreadsheet = "본인의_구글_시트_주소"
+        ```
+        """)
+        
+        st.markdown("---")
+        st.subheader("🔗 시스템 공유 설정")
+        st.write("배포가 완료되면 브라우저 주소창의 링크를 복사하여 사이드바 하단의 `backhaul_share_url` 변수 값에 넣어주세요. 그러면 QR 코드가 활성화됩니다.")
 
 # 메인 라우팅
 if st.session_state.current_menu == "통합 주문 현황":
