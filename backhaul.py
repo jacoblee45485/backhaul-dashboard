@@ -86,7 +86,7 @@ def render_official_header():
 def fetch_usda_api_data(manual_id=None):
     """
     USDA MARS API 실시간 호출 로직.
-    개발 및 매핑을 위해 Raw JSON 데이터를 함께 반환하도록 기능을 추가함.
+    개발 및 매핑을 위해 Raw JSON 데이터와 성공한 URL을 함께 반환.
     """
     api_key = st.secrets.get("USDA_API_KEY", "J5v4ZF527NWTsrcMJeB7jrXgfgRyPVzd")
     
@@ -188,10 +188,11 @@ def fetch_usda_api_data(manual_id=None):
     ]
 
     if not api_key:
-        return pd.DataFrame(demo_prices), "API 키 미설정", {"error": "API 키가 없습니다."}
+        return pd.DataFrame(demo_prices), "API 키 미설정", {"error": "API 키가 없습니다."}, ""
 
     target_id = manual_id if manual_id else "3646"
     
+    # URL 시도 순서
     base_urls = [
         f"https://marsapi.ams.usda.gov/services/v1.2/reports/{target_id}/data",
         f"https://marsapi.ams.usda.gov/services/v1.2/reports/{target_id}/results",
@@ -206,15 +207,13 @@ def fetch_usda_api_data(manual_id=None):
     headers = {
         "Authorization": f"Basic {encoded_auth}",
         "Accept": "application/json",
-        "User-Agent": "GiantFoodsystem-Dashboard/3.0"
+        "User-Agent": "GiantFoodsystem-Dashboard/3.1"
     }
     
     last_status = "No Attempt"
     debug_log = []
     final_response = None
     successful_url = ""
-    
-    # 탭에 표시할 원본 데이터 (항상 무언가를 담아 반환)
     raw_json_data = {"status": "통신 실패", "message": "유효한 응답 데이터를 받지 못했습니다."}
     
     try:
@@ -224,7 +223,6 @@ def fetch_usda_api_data(manual_id=None):
                 res = requests.get(url, headers=headers, timeout=12)
                 last_status = res.status_code
                 
-                # 실패했더라도 그 응답(HTML 등)을 저장해 둠
                 try:
                     raw_json_data = res.json()
                 except:
@@ -243,18 +241,14 @@ def fetch_usda_api_data(manual_id=None):
         
         # 2. 통신 결과 확인
         if final_response:
-            if successful_url.endswith("/reports"):
-                st.session_state['api_debug_details'] = debug_log + ["", "🎯 진단 결과: API 통신 성공", "현재 표시되는 데이터는 로직 검증용 시뮬레이션입니다."]
-                return pd.DataFrame(demo_prices), "API 통신 성공 (시뮬레이션 모드 가동 중)", raw_json_data
-            else:
-                return pd.DataFrame(demo_prices), f"API 통신 성공 ({datetime.now().strftime('%H:%M:%S')} - 시뮬레이션)", raw_json_data
+            status_msg = "API 통신 성공 (시뮬레이션 모드 가동 중)"
+            return pd.DataFrame(demo_prices), status_msg, raw_json_data, successful_url
         else:
             st.session_state['api_debug_details'] = debug_log
-            # 실패해도 raw_json_data (에러 텍스트)를 같이 넘겨줌
-            return pd.DataFrame(demo_prices), f"통신 실패 (Status: {last_status}) - 시뮬레이션 가동", raw_json_data
+            return pd.DataFrame(demo_prices), f"통신 실패 (Status: {last_status}) - 시뮬레이션 가동", raw_json_data, ""
             
     except Exception as e:
-        return pd.DataFrame(demo_prices), f"시스템 오류 - 시뮬레이션 가동", {"error_message": str(e)}
+        return pd.DataFrame(demo_prices), f"시스템 오류 - 시뮬레이션 가동", {"error_message": str(e)}, ""
 
 # ==========================================
 # 3. 데이터 로드 로직 (구글 시트 연동)
@@ -374,9 +368,9 @@ def view_market_price_comparison():
             st.rerun()
             
     if use_live_api:
-        df_price, update_status, raw_json = fetch_usda_api_data(manual_report_id)
+        df_price, update_status, raw_json, success_url = fetch_usda_api_data(manual_report_id)
     else:
-        df_price, update_status, raw_json = fetch_usda_api_data(manual_report_id)
+        df_price, update_status, raw_json, success_url = fetch_usda_api_data(manual_report_id)
         update_status = "오프라인 시뮬레이션 모드"
 
     status_color = "#f59e0b" # 오렌지색으로 변경 (시뮬레이션 강조)
@@ -394,15 +388,29 @@ def view_market_price_comparison():
         st.markdown("### 💻 실제 리포트 Raw Data (파싱 개발용)")
         st.info("💡 통신에 성공하여 받아온 실제 데이터 원본입니다. 아래 표의 컬럼명(영어 Key)을 확인하면 파싱 코드를 작성할 수 있습니다.")
         
+        if success_url:
+            st.write(f"✅ **통신 성공 URL:** `{success_url}`")
+
         # results 키 내부의 리스트를 추출하여 DataFrame 형태로 깔끔하게 표시
         if isinstance(raw_json, dict) and "results" in raw_json and isinstance(raw_json["results"], list) and len(raw_json["results"]) > 0:
-            st.markdown(f"#### 🔍 데이터 미리보기 (총 {len(raw_json['results'])}건)")
             real_df = pd.DataFrame(raw_json["results"])
+            
+            # Report Detail이 섞여있다면 그것만 필터링해서 보여주는 로직
+            if 'reportSection' in real_df.columns:
+                detail_df = real_df[real_df['reportSection'].str.contains('Detail|Data', case=False, na=False)]
+                if not detail_df.empty:
+                    st.success("🎯 **'Report Detail(상세 가격 데이터)' 섹션을 자동으로 찾아 필터링했습니다!**")
+                    real_df = detail_df
+                else:
+                    st.warning("⚠️ 현재 이 보고서에는 'Report Header(표지)' 정보만 수신되었습니다. 가격이 포함된 상세 데이터를 찾지 못했습니다.")
+            
+            st.markdown(f"#### 🔍 데이터 미리보기 (표시 건수: {len(real_df)}건)")
             st.dataframe(real_df, height=300)
             
             # 파싱을 위해 사용 가능한 컬럼명 나열
-            st.markdown("**사용 가능한 컬럼명(Key) 목록:**")
+            st.markdown("**👇 현재 찾은 진짜 영어 단어(Key) 목록:**")
             st.code(", ".join(real_df.columns))
+            st.markdown("*이 중에서 가격이나 품목 이름처럼 보이는 단어를 채팅창에 알려주세요!*")
         else:
             # results 배열이 없거나 다른 형태일 때 원본 JSON 표시
             st.json(raw_json)
