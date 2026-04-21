@@ -283,6 +283,8 @@ def view_market_comparison():
                                 fig.update_geos(fitbounds="locations")
                                 fig.update_layout(margin=dict(l=0, r=0, t=10, b=0), height=250)
                                 st.plotly_chart(fig, use_container_width=True)
+                            else:
+                                st.warning("⚠️ Plotly 라이브러리가 설치되지 않아 지도를 표시할 수 없습니다. requirements.txt에 'plotly'를 추가해주세요.")
                     tab_idx += 1
 
     with tab2:
@@ -305,6 +307,8 @@ def view_market_comparison():
                     if PLOTLY_AVAILABLE:
                         fig = px.bar(df_market.head(15), x=df_market.head(15).index, y=price_col, title=f"품목별 평균 단가 ($)", color_discrete_sequence=['#E31837'])
                         st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        st.warning("⚠️ Plotly 라이브러리가 없어 차트를 그릴 수 없습니다.")
                     st.dataframe(df_market[[price_col]].head(10))
                 elif status == "empty_shell":
                     st.markdown(f"""
@@ -350,16 +354,26 @@ def view_3pl_freight():
         ]
         
         for truck in backhaul_trucks:
-            # 팔레트 사각형 HTML 동적 생성 - 사이즈를 고정하고 flex-shrink: 0을 통해 브라우저가 강제로 찌그러뜨리지 못하게 방어합니다.
-            pallet_html = ""
-            for i in range(22):
-                if i < truck["used"]:
-                    # 채워진 공간 (회색 사각형) - 사이즈 고정
-                    pallet_html += '<div style="width: 24px; height: 24px; background-color: #94a3b8; border-radius: 3px; flex-shrink: 0;"></div>'
-                else:
-                    # 빈 공간 (녹색 테두리의 밝은 공간) - 사이즈 고정
-                    pallet_html += '<div style="width: 24px; height: 24px; background-color: #dcfce7; border-radius: 3px; border: 2px solid #22c55e; box-sizing: border-box; flex-shrink: 0;"></div>'
+            # 브라우저 호환성을 100% 보장하기 위해 Grid 대신 명시적인 Flexbox 행(Row)으로 2개씩 채워지게 분리
+            row1_html = ""
+            row2_html = ""
             
+            for i in range(11): # 가로 11칸 반복
+                idx1 = i * 2      # 윗줄 인덱스: 0, 2, 4 ... 20
+                idx2 = i * 2 + 1  # 아랫줄 인덱스: 1, 3, 5 ... 21
+                
+                # 윗줄(Row 1) 팔렛트 채우기
+                if idx1 < truck["used"]:
+                    row1_html += '<div style="width: 24px; height: 24px; background-color: #94a3b8; border-radius: 3px; flex-shrink: 0;"></div>'
+                else:
+                    row1_html += '<div style="width: 24px; height: 24px; background-color: #dcfce7; border-radius: 3px; border: 2px solid #22c55e; box-sizing: border-box; flex-shrink: 0;"></div>'
+                    
+                # 아랫줄(Row 2) 팔렛트 채우기
+                if idx2 < truck["used"]:
+                    row2_html += '<div style="width: 24px; height: 24px; background-color: #94a3b8; border-radius: 3px; flex-shrink: 0;"></div>'
+                else:
+                    row2_html += '<div style="width: 24px; height: 24px; background-color: #dcfce7; border-radius: 3px; border: 2px solid #22c55e; box-sizing: border-box; flex-shrink: 0;"></div>'
+
             # 트럭 카드 렌더링
             st.markdown(f"""
             <div style="border: 1px solid #e2e8f0; border-radius: 10px; padding: 15px; margin-bottom: 15px; background-color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
@@ -375,12 +389,17 @@ def view_3pl_freight():
                     <span>사용: {truck['used']} &nbsp;|&nbsp; <b style="color: #16a34a; font-size: 1.1em;">잔여: {truck['available']} PLT</b></span>
                 </div>
                 
-                <!-- 트럭 탑차 형태의 2x11 그리드 시각화 (가로 폭 축소 방지 적용) -->
+                <!-- 트럭 탑차 형태 시각화 (호환성 100% Flexbox 사용) -->
                 <div style="display: flex; align-items: center; background-color: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; overflow-x: auto;">
                     <div style="background-color: #cbd5e1; color: #334155; padding: 8px 4px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; margin-right: 12px; text-align: center; min-width: 40px; flex-shrink: 0;">안쪽<br>(Front)</div>
                     
-                    <div style="display: grid; grid-template-rows: repeat(2, 24px); grid-template-columns: repeat(11, 24px); grid-auto-flow: column; gap: 5px; flex-shrink: 0;">
-                        {pallet_html}
+                    <div style="display: flex; flex-direction: column; gap: 5px; flex-shrink: 0;">
+                        <div style="display: flex; flex-direction: row; gap: 5px;">
+                            {row1_html}
+                        </div>
+                        <div style="display: flex; flex-direction: row; gap: 5px;">
+                            {row2_html}
+                        </div>
                     </div>
                     
                     <div style="margin-left: auto; padding-left: 12px; color: #64748b; font-size: 0.65rem; font-weight: bold; text-align: center; border-left: 2px dashed #cbd5e1; min-width: 40px; flex-shrink: 0;">뒷문<br>(Doors)</div>
@@ -423,6 +442,8 @@ def view_local_partners():
                 fig1 = px.scatter_geo(suppliers_db["TX"], lat='lat', lon='lon', text='업체명', color='취급품목', scope='usa', title="Texas Local Meat Suppliers Map", color_discrete_sequence=['#E31837', '#0F4C81', '#166534'])
                 fig1.update_geos(fitbounds="locations")
                 st.plotly_chart(fig1, use_container_width=True)
+            else:
+                st.warning("⚠️ Plotly 라이브러리가 없어 지도를 표시할 수 없습니다.")
 
     with tab2:
         c3, c4 = st.columns([1, 1.5])
