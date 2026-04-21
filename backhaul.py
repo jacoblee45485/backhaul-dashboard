@@ -187,7 +187,7 @@ def view_local_partners():
     st.subheader("🤝 로컬 파트너 발굴 (Backhaul Sourcing)")
     st.markdown("배송 후 GA 허브로 돌아오는 트럭의 공차율을 줄이기 위한 지역 파트너 및 산지 발굴 지도입니다.")
     
-    tab1, tab2 = st.tabs(["🥩 텍사스 (TX 육류)", "🍊 플로리다 (FL 농·수산물)"])
+    tab1, tab2, tab3, tab4 = st.tabs(["🥩 텍사스 (TX 육류)", "🍊 플로리다 (FL 농·수산물)", "🍑 조지아 (GA 농·축산물)", "🍎 뉴저지 (NJ 농·수산물)"])
     
     with tab1:
         # 텍사스 로컬 육류 공급처 데모 데이터
@@ -230,6 +230,48 @@ def view_local_partners():
                                      color_discrete_sequence=['#0EA5E9', '#F59E0B', '#10B981'])
                 fig2.update_geos(fitbounds="locations")
                 st.plotly_chart(fig2, use_container_width=True)
+                
+    with tab3:
+        # 조지아 농/축산물 공급처 데모 데이터
+        ga_suppliers = pd.DataFrame([
+            {"업체명": "Gainesville Poultry", "도시": "Gainesville", "취급품목": "Poultry", "상태": "메인 파트너", "lat": 34.2978, "lon": -83.8240},
+            {"업체명": "Albany Peanut Co.", "도시": "Albany", "취급품목": "Agri/Peanuts", "상태": "계약 완료", "lat": 31.5785, "lon": -84.1557},
+            {"업체명": "Savannah Seafood", "도시": "Savannah", "취급품목": "Seafood", "상태": "컨택 요망", "lat": 32.0809, "lon": -81.0912},
+            {"업체명": "Atlanta Fresh Meats", "도시": "Atlanta", "취급품목": "Beef/Pork", "상태": "메인 파트너", "lat": 33.7490, "lon": -84.3880}
+        ])
+        
+        c5, c6 = st.columns([1, 1.5])
+        with c5:
+            st.dataframe(ga_suppliers[["업체명", "도시", "취급품목", "상태"]], use_container_width=True, hide_index=True)
+            st.info("💡 **팁:** 조지아(GA)는 물류 메인 허브이면서 동시에 가금류(Poultry) 및 주요 농작물(땅콩, 복숭아 등)의 핵심 산지입니다.")
+        with c6:
+            if PLOTLY_AVAILABLE:
+                fig3 = px.scatter_geo(ga_suppliers, lat='lat', lon='lon', text='업체명', color='취급품목',
+                                     scope='usa', title="Georgia Agri/Livestock Suppliers Map",
+                                     color_discrete_sequence=['#F59E0B', '#E31837', '#0EA5E9', '#8B5CF6'])
+                fig3.update_geos(fitbounds="locations")
+                st.plotly_chart(fig3, use_container_width=True)
+                
+    with tab4:
+        # 뉴저지 농/수산물 공급처 데모 데이터
+        nj_suppliers = pd.DataFrame([
+            {"업체명": "Hammonton Blueberry Farms", "도시": "Hammonton", "취급품목": "Fruits", "상태": "계약 검토중", "lat": 39.6364, "lon": -74.8036},
+            {"업체명": "Cape May Catch", "도시": "Cape May", "취급품목": "Seafood", "상태": "계약 완료", "lat": 38.9351, "lon": -74.9060},
+            {"업체명": "Vineland Produce", "도시": "Vineland", "취급품목": "Vegetables", "상태": "컨택 요망", "lat": 39.4863, "lon": -75.0259},
+            {"업체명": "Trenton Meats", "도시": "Trenton", "취급품목": "Meat/Poultry", "상태": "메인 파트너", "lat": 40.2170, "lon": -74.7429}
+        ])
+        
+        c7, c8 = st.columns([1, 1.5])
+        with c7:
+            st.dataframe(nj_suppliers[["업체명", "도시", "취급품목", "상태"]], use_container_width=True, hide_index=True)
+            st.info("💡 **팁:** 뉴저지(NJ) 허브 인근 지역은 블루베리, 토마토 등의 신선 농산물과 해안 지역의 수산물 백홀 최적화에 이상적입니다.")
+        with c8:
+            if PLOTLY_AVAILABLE:
+                fig4 = px.scatter_geo(nj_suppliers, lat='lat', lon='lon', text='업체명', color='취급품목',
+                                     scope='usa', title="New Jersey Agri/Seafood Suppliers Map",
+                                     color_discrete_sequence=['#10B981', '#0EA5E9', '#F59E0B', '#E31837'])
+                fig4.update_geos(fitbounds="locations")
+                st.plotly_chart(fig4, use_container_width=True)
 
 
 if st.session_state.current_menu == "통합 주문 현황":
