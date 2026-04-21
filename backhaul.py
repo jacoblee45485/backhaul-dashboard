@@ -187,7 +187,7 @@ def view_local_partners():
     st.subheader("🤝 로컬 파트너 발굴 (Backhaul Sourcing)")
     st.markdown("배송 후 GA 허브로 돌아오는 트럭의 공차율을 줄이기 위한 지역 파트너 및 산지 발굴 지도입니다.")
     
-    tab1, tab2, tab3, tab4 = st.tabs(["🥩 텍사스 (TX 육류)", "🍊 플로리다 (FL 농·수산물)", "🍑 조지아 (GA 농·축산물)", "🍎 뉴저지 (NJ 농·수산물)"])
+    tab1, tab2, tab3, tab4 = st.tabs(["🥩 텍사스 (TX 육류)", "🍊 플로리다 (FL 농·수산물)", "🍑 조지아 (GA 농·축산물 & 홀세일)", "🍎 뉴저지 (NJ 농·수산물)"])
     
     with tab1:
         # 텍사스 로컬 육류 공급처 데모 데이터
@@ -232,23 +232,25 @@ def view_local_partners():
                 st.plotly_chart(fig2, use_container_width=True)
                 
     with tab3:
-        # 조지아 농/축산물 공급처 데모 데이터
+        # 조지아 농/축산물 및 홀세일러 공급처 데모 데이터
         ga_suppliers = pd.DataFrame([
             {"업체명": "Gainesville Poultry", "도시": "Gainesville", "취급품목": "Poultry", "상태": "메인 파트너", "lat": 34.2978, "lon": -83.8240},
             {"업체명": "Albany Peanut Co.", "도시": "Albany", "취급품목": "Agri/Peanuts", "상태": "계약 완료", "lat": 31.5785, "lon": -84.1557},
             {"업체명": "Savannah Seafood", "도시": "Savannah", "취급품목": "Seafood", "상태": "컨택 요망", "lat": 32.0809, "lon": -81.0912},
-            {"업체명": "Atlanta Fresh Meats", "도시": "Atlanta", "취급품목": "Beef/Pork", "상태": "메인 파트너", "lat": 33.7490, "lon": -84.3880}
+            {"업체명": "Atlanta Fresh Meats", "도시": "Atlanta", "취급품목": "Beef/Pork", "상태": "메인 파트너", "lat": 33.7490, "lon": -84.3880},
+            {"업체명": "Macon Food Distributors", "도시": "Macon", "취급품목": "Wholesale", "상태": "계약 검토중", "lat": 32.8407, "lon": -83.6324},
+            {"업체명": "Norcross Asian Wholesale", "도시": "Norcross", "취급품목": "Wholesale", "상태": "컨택 요망", "lat": 33.9412, "lon": -84.2135}
         ])
         
         c5, c6 = st.columns([1, 1.5])
         with c5:
             st.dataframe(ga_suppliers[["업체명", "도시", "취급품목", "상태"]], use_container_width=True, hide_index=True)
-            st.info("💡 **팁:** 조지아(GA)는 물류 메인 허브이면서 동시에 가금류(Poultry) 및 주요 농작물(땅콩, 복숭아 등)의 핵심 산지입니다.")
+            st.info("💡 **팁:** 조지아(GA)는 물류 메인 허브이면서 동시에 가금류(Poultry), 주요 농작물, 그리고 대형 식자재 홀세일러(Wholesale)가 밀집해 있습니다.")
         with c6:
             if PLOTLY_AVAILABLE:
                 fig3 = px.scatter_geo(ga_suppliers, lat='lat', lon='lon', text='업체명', color='취급품목',
-                                     scope='usa', title="Georgia Agri/Livestock Suppliers Map",
-                                     color_discrete_sequence=['#F59E0B', '#E31837', '#0EA5E9', '#8B5CF6'])
+                                     scope='usa', title="Georgia Agri/Livestock & Wholesale Map",
+                                     color_discrete_sequence=['#F59E0B', '#E31837', '#0EA5E9', '#8B5CF6', '#10B981'])
                 fig3.update_geos(fitbounds="locations")
                 st.plotly_chart(fig3, use_container_width=True)
                 
