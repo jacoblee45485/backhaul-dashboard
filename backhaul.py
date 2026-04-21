@@ -39,9 +39,9 @@ custom_css = (
 st.markdown(custom_css, unsafe_allow_html=True)
 
 def render_official_header():
-    # 타이틀 박스 상단 모서리를 더 둥글게 (30px) 수정하고 하단은 자연스럽게 유지
+    # 타이틀 박스의 모든 모서리를 동일하게 둥글게 (30px) 수정
     header_html = (
-        '<div style="background-color: #f8fafc; padding: 30px 20px; border-radius: 30px 30px 10px 10px; border: 2px solid #e2e8f0; margin-bottom: 30px; text-align: center;">'
+        '<div style="background-color: #f8fafc; padding: 30px 20px; border-radius: 30px; border: 2px solid #e2e8f0; margin-bottom: 30px; text-align: center;">'
         '<h1 style="margin: 0; font-size: 3.5rem; font-weight: 900; letter-spacing: -2px; line-height: 1.1;">'
         '<span style="color: #E31837;">GIANT</span> <span style="color: #000000;">FOODSYSTEM</span>'
         '</h1>'
