@@ -39,11 +39,11 @@ custom_css = (
 st.markdown(custom_css, unsafe_allow_html=True)
 
 def render_official_header():
-    # 모든 HTML을 줄바꿈 없는 한 줄 문자열로 결합하여 렌더링 버그 원천 차단
+    # FOODSYSTEM의 폰트 크기를 GIANT(3.5rem)와 동일하게 조정
     header_html = (
         '<div style="background-color: #f8fafc; padding: 30px 20px; border-radius: 15px; border: 2px solid #e2e8f0; margin-bottom: 30px; text-align: center;">'
         '<h1 style="margin: 0; font-size: 3.5rem; font-weight: 900; letter-spacing: -2px; line-height: 1.1;">'
-        '<span style="color: #E31837;">GIANT</span> <span style="color: #000000; font-size: 1.5rem; vertical-align: middle;">FOODSYSTEM</span>'
+        '<span style="color: #E31837;">GIANT</span> <span style="color: #000000;">FOODSYSTEM</span>'
         '</h1>'
         '<p style="font-size: 1.2rem; font-weight: 700; color: #475569; margin: 10px 0 5px 0;">#1 K-food Distributor in USA</p>'
         '<p style="font-size: 0.95rem; font-weight: 500; color: #64748b; margin: 0; line-height: 1.4;">'
