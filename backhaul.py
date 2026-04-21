@@ -328,7 +328,10 @@ def view_3pl_freight():
             origin = st.selectbox("상차지 (Origin - 타지역)", ["TX (Texas)", "FL (Florida)", "NJ (New Jersey)", "NC (North Carolina)", "기타 지역"])
             destination = st.selectbox("하차지 (Destination)", ["GA (Georgia Main Hub)", "기타 경유지"])
             item_desc = st.text_input("화물 내용 (품목 무관)", placeholder="예: 상온 공산품, 포장 자재, 건축 자재 등")
-            pallets = st.number_input("물량 (Pallets)", min_value=1, max_value=26, value=1)
+            
+            # 22팔렛 최대 적재 반영
+            pallets = st.number_input("물량 (Pallets)", min_value=1, max_value=22, value=1)
+            
             date = st.date_input("희망 상차일")
             submitted = st.form_submit_button("백홀 운송 의뢰 접수")
             
@@ -336,18 +339,53 @@ def view_3pl_freight():
                 st.success(f"✅ {sender}님의 {origin} ➡️ {destination} 구간 화물({pallets} Pallets) 운송 의뢰가 성공적으로 접수되었습니다. 배차 담당자가 곧 연락드리겠습니다.")
                 
     with col2:
-        st.markdown("#### 🚚 실시간 귀환 트럭 (Backhaul 매칭 가능 트럭)")
-        st.info("타 지역에서 배송을 마치고 GA로 돌아오는(Inbound) 당사 트럭의 빈 공간을 활용해 합리적인 운임으로 매칭해 드립니다.")
+        st.markdown("#### 🚚 실시간 귀환 트럭 적재 공간 시각화")
+        st.info("타 지역에서 배송을 마치고 GA로 돌아오는(Inbound) 당사 트럭의 빈 공간 현황입니다. (최대 22 Pallets)")
         
-        backhaul_trucks = pd.DataFrame([
-            {"트럭 ID": "TRK-901", "현재 위치(상차지)": "TX (Dallas)", "하차지": "GA (Hub)", "출발 예정": "내일 오전", "잔여 공간": "12 Pallets", "상태": "매칭 가능"},
-            {"트럭 ID": "TRK-905", "현재 위치(상차지)": "FL (Miami)", "하차지": "GA (Hub)", "출발 예정": "오늘 오후", "잔여 공간": "26 Pallets (완전공차)", "상태": "매칭 가능"},
-            {"트럭 ID": "TRK-912", "현재 위치(상차지)": "NJ (Trenton)", "하차지": "GA (Hub)", "출발 예정": "모레", "잔여 공간": "4 Pallets", "상태": "공간 협소"}
-        ])
-        st.dataframe(backhaul_trucks, hide_index=True, use_container_width=True)
+        # 트럭 현황 시각화용 데이터 (최대 적재 22)
+        backhaul_trucks = [
+            {"id": "TRK-901", "origin": "TX (Dallas)", "destination": "GA (Hub)", "schedule": "내일 오전 출발", "used": 10, "available": 12, "status": "매칭 가능"},
+            {"id": "TRK-905", "origin": "FL (Miami)", "destination": "GA (Hub)", "schedule": "오늘 오후 출발", "used": 0, "available": 22, "status": "완전 공차"},
+            {"id": "TRK-912", "origin": "NJ (Trenton)", "destination": "GA (Hub)", "schedule": "모레 출발", "used": 18, "available": 4, "status": "공간 협소"}
+        ]
+        
+        for truck in backhaul_trucks:
+            # 팔레트 사각형 HTML 동적 생성
+            pallet_html = ""
+            for i in range(22):
+                if i < truck["used"]:
+                    # 채워진 공간 (회색 사각형)
+                    pallet_html += '<div style="width: 18px; height: 18px; background-color: #94a3b8; border-radius: 3px; margin: 3px;"></div>'
+                else:
+                    # 빈 공간 (녹색 테두리의 밝은 공간 - 예약 가능)
+                    pallet_html += '<div style="width: 18px; height: 18px; background-color: #dcfce7; border-radius: 3px; margin: 3px; border: 1.5px solid #22c55e;"></div>'
+            
+            # 트럭 카드 렌더링
+            st.markdown(f"""
+            <div style="border: 1px solid #e2e8f0; border-radius: 10px; padding: 15px; margin-bottom: 15px; background-color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <strong style="font-size: 1.2em; color: #0f172a;">🚛 {truck['id']}</strong>
+                    <span style="background-color: #f1f5f9; color: #334155; padding: 3px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; border: 1px solid #cbd5e1;">{truck['status']}</span>
+                </div>
+                <div style="color: #475569; font-size: 0.9em; margin-bottom: 12px;">
+                    📍 <b>{truck['origin']}</b> ➡️ <b>{truck['destination']}</b> &nbsp;|&nbsp; 🕒 {truck['schedule']}
+                </div>
+                <div style="font-size: 0.85em; color: #334155; margin-bottom: 6px; display: flex; justify-content: space-between;">
+                    <span><b>적재 공간 현황</b> (총 22 PLT)</span>
+                    <span>사용: {truck['used']} &nbsp;|&nbsp; <b style="color: #16a34a; font-size: 1.1em;">잔여: {truck['available']} PLT</b></span>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; background-color: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    {pallet_html}
+                </div>
+                <div style="display: flex; gap: 15px; margin-top: 10px; font-size: 0.8rem; color: #64748b;">
+                    <div style="display: flex; align-items: center;"><div style="width: 12px; height: 12px; background-color: #94a3b8; border-radius: 2px; margin-right: 6px;"></div>타 화물 적재됨</div>
+                    <div style="display: flex; align-items: center;"><div style="width: 12px; height: 12px; background-color: #dcfce7; border: 1.5px solid #22c55e; border-radius: 2px; margin-right: 6px;"></div><b>예약 가능 (잔여 여유 공간)</b></div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
         
         st.markdown("""
-        <div class="warning-box" style="background-color: #f0fdf4; border-color: #bbf7d0; color: #166534;">
+        <div class="warning-box" style="background-color: #f0fdf4; border-color: #bbf7d0; color: #166534; margin-top: 20px;">
             <b>💡 3PL 백홀 비즈니스 모델:</b><br>
             아웃바운드(프론트홀) 물량은 자사 상품으로 이미 고정되어 있습니다. 본 서비스는 <b>배송 완료 후 조지아 본사로 돌아오는 빈 트럭(Backhaul)</b>을 활용하여, 타 업체의 화물(품목 무관)을 운송함으로써 <b>운송 원가 절감 및 추가 수익</b>을 창출하는 핵심 기능입니다.
         </div>
