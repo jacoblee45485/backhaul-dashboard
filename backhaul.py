@@ -154,6 +154,15 @@ if st.sidebar.button("🔄 실시간 데이터 업데이트", use_container_widt
     st.cache_data.clear()
     st.rerun()
 
+# QR 코드 및 공유 링크 섹션 추가
+st.sidebar.markdown("---")
+st.sidebar.subheader("🔗 시스템 공유하기")
+# 배포하신 실제 Streamlit 앱 URL로 변경해서 사용하세요.
+app_share_url = "https://backhaul-dashboard-giant.streamlit.app" 
+qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={app_share_url}"
+st.sidebar.image(qr_api_url, caption="스마트폰으로 접속하기", width=150)
+st.sidebar.code(app_share_url)
+
 # ==========================================
 # 5. 메인 화면 뷰 (라우팅)
 # ==========================================
