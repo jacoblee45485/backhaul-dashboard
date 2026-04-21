@@ -350,15 +350,15 @@ def view_3pl_freight():
         ]
         
         for truck in backhaul_trucks:
-            # 팔레트 사각형 HTML 동적 생성 (안쪽부터 2개씩 채워지는 트럭 탑차 형태 시각화)
+            # 팔레트 사각형 HTML 동적 생성 - 사이즈를 고정하고 flex-shrink: 0을 통해 브라우저가 강제로 찌그러뜨리지 못하게 방어합니다.
             pallet_html = ""
             for i in range(22):
                 if i < truck["used"]:
-                    # 채워진 공간 (회색 사각형)
-                    pallet_html += '<div style="width: 22px; height: 22px; background-color: #94a3b8; border-radius: 3px;"></div>'
+                    # 채워진 공간 (회색 사각형) - 사이즈 고정
+                    pallet_html += '<div style="width: 24px; height: 24px; background-color: #94a3b8; border-radius: 3px; flex-shrink: 0;"></div>'
                 else:
-                    # 빈 공간 (녹색 테두리의 밝은 공간 - 예약 가능)
-                    pallet_html += '<div style="width: 22px; height: 22px; background-color: #dcfce7; border-radius: 3px; border: 1.5px solid #22c55e; box-sizing: border-box;"></div>'
+                    # 빈 공간 (녹색 테두리의 밝은 공간) - 사이즈 고정
+                    pallet_html += '<div style="width: 24px; height: 24px; background-color: #dcfce7; border-radius: 3px; border: 2px solid #22c55e; box-sizing: border-box; flex-shrink: 0;"></div>'
             
             # 트럭 카드 렌더링
             st.markdown(f"""
@@ -375,18 +375,20 @@ def view_3pl_freight():
                     <span>사용: {truck['used']} &nbsp;|&nbsp; <b style="color: #16a34a; font-size: 1.1em;">잔여: {truck['available']} PLT</b></span>
                 </div>
                 
-                <!-- 트럭 탑차 형태의 2x11 그리드 시각화 -->
+                <!-- 트럭 탑차 형태의 2x11 그리드 시각화 (가로 폭 축소 방지 적용) -->
                 <div style="display: flex; align-items: center; background-color: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; overflow-x: auto;">
-                    <div style="background-color: #cbd5e1; color: #334155; padding: 8px 4px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; margin-right: 12px; text-align: center; min-width: 40px;">안쪽<br>(Front)</div>
-                    <div style="display: grid; grid-template-rows: repeat(2, 1fr); grid-auto-flow: column; gap: 4px;">
+                    <div style="background-color: #cbd5e1; color: #334155; padding: 8px 4px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; margin-right: 12px; text-align: center; min-width: 40px; flex-shrink: 0;">안쪽<br>(Front)</div>
+                    
+                    <div style="display: grid; grid-template-rows: repeat(2, 24px); grid-template-columns: repeat(11, 24px); grid-auto-flow: column; gap: 5px; flex-shrink: 0;">
                         {pallet_html}
                     </div>
-                    <div style="margin-left: auto; padding-left: 12px; color: #64748b; font-size: 0.65rem; font-weight: bold; text-align: center; border-left: 2px dashed #cbd5e1; min-width: 40px;">뒷문<br>(Doors)</div>
+                    
+                    <div style="margin-left: auto; padding-left: 12px; color: #64748b; font-size: 0.65rem; font-weight: bold; text-align: center; border-left: 2px dashed #cbd5e1; min-width: 40px; flex-shrink: 0;">뒷문<br>(Doors)</div>
                 </div>
                 
                 <div style="display: flex; gap: 15px; margin-top: 10px; font-size: 0.8rem; color: #64748b;">
-                    <div style="display: flex; align-items: center;"><div style="width: 12px; height: 12px; background-color: #94a3b8; border-radius: 2px; margin-right: 6px;"></div>타 화물 적재됨</div>
-                    <div style="display: flex; align-items: center;"><div style="width: 12px; height: 12px; background-color: #dcfce7; border: 1.5px solid #22c55e; border-radius: 2px; margin-right: 6px;"></div><b>예약 가능 (잔여 여유 공간)</b></div>
+                    <div style="display: flex; align-items: center;"><div style="width: 12px; height: 12px; background-color: #94a3b8; border-radius: 2px; margin-right: 6px; flex-shrink: 0;"></div>타 화물 적재됨</div>
+                    <div style="display: flex; align-items: center;"><div style="width: 12px; height: 12px; background-color: #dcfce7; border: 1.5px solid #22c55e; border-radius: 2px; margin-right: 6px; flex-shrink: 0;"></div><b>예약 가능 (잔여 여유 공간)</b></div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
