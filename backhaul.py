@@ -92,7 +92,6 @@ def load_gsheet_data():
 
 df_orders, df_trucks, error_msg = load_gsheet_data()
 
-# 전역에서 재사용 가능한 로컬 파트너 데이터 생성
 @st.cache_data
 def get_local_suppliers():
     return {
@@ -178,7 +177,7 @@ st.sidebar.markdown("""
 """, unsafe_allow_html=True)
 st.sidebar.markdown("---")
 
-menus = ["통합 주문 현황", "시장가 비교 & 수익성 분석", "로컬 파트너 검색", "데이터 통합 관리"]
+menus = ["통합 주문 현황", "시장가 비교 & 수익성 분석", "로컬 파트너 검색", "B2B 백홀 화물 운송 (3PL)", "데이터 통합 관리"]
 for menu in menus:
     if st.sidebar.button(menu, key=f"sidebar_{menu}", use_container_width=True):
         st.session_state.current_menu = menu
@@ -188,7 +187,6 @@ if st.sidebar.button("🔄 실시간 데이터 업데이트", use_container_widt
     st.cache_data.clear()
     st.rerun()
 
-# QR 코드 및 공유 링크 섹션 (고정된 URL)
 st.sidebar.markdown("---")
 st.sidebar.subheader("🔗 시스템 공유하기")
 st.sidebar.caption("아래 QR코드를 스캔하여 모바일로 접속하세요.")
@@ -258,19 +256,14 @@ def view_market_comparison():
             else:
                 st.warning("조건을 만족하는 타겟 아이템이 없습니다.")
 
-        # ==========================================
-        # 🔥 신규 기능: 타겟 아이템 기반 로컬 파트너 자동 매칭
-        # ==========================================
         if not df_target_only.empty:
             st.markdown("---")
             st.subheader("🔗 타겟 품목 지역별 로컬 공급처 매칭")
             st.caption("수익성이 확인된 타겟 품목을 조달할 수 있는 현지 파트너 목록입니다.")
             
-            # 타겟으로 선정된 고유 지역 추출 (예: TX, FL, NJ)
             target_regions = df_target_only['비교지역'].unique()
             suppliers_db = get_local_suppliers()
             
-            # 매칭된 지역들의 탭 생성
             matched_tabs = st.tabs([f"📍 {region} 지역 조달처" for region in target_regions if region in suppliers_db])
             
             tab_idx = 0
@@ -278,8 +271,6 @@ def view_market_comparison():
                 if region in suppliers_db:
                     with matched_tabs[tab_idx]:
                         reg_df = suppliers_db[region]
-                        
-                        # 해당 지역에서 타겟으로 선정된 품목 리스트 요약
                         matched_items = df_target_only[df_target_only['비교지역'] == region]['품목'].tolist()
                         st.markdown(f"**조달 목표:** {', '.join(matched_items)}")
                         
@@ -293,7 +284,6 @@ def view_market_comparison():
                                 fig.update_layout(margin=dict(l=0, r=0, t=10, b=0), height=250)
                                 st.plotly_chart(fig, use_container_width=True)
                     tab_idx += 1
-
 
     with tab2:
         st.markdown("USDA MARS API를 통해 특정 리포트의 실시간 가공되지 않은 원본 시세를 조회합니다.")
@@ -323,6 +313,45 @@ def view_market_comparison():
                         조회하신 숫자 번호(<b>{report_id}</b>)는 실제 가격 정보가 없습니다. 다른 ID를 입력해 보세요!
                     </div>
                     """, unsafe_allow_html=True)
+
+def view_3pl_freight():
+    render_official_header()
+    st.subheader("🚛 B2B 백홀 화물 운송 의뢰 (3PL 서비스)")
+    st.markdown("아웃바운드(프론트홀) 배송을 마치고 **조지아(GA) 메인 허브로 귀환하는 백홀 트럭**의 여유 공간을 활용하여, 품목에 무관하게 화물을 운송해 드리는 접수처입니다.")
+    
+    col1, col2 = st.columns([1, 1.2])
+    
+    with col1:
+        st.markdown("#### 📝 백홀 운송 의뢰서 작성")
+        with st.form("freight_form"):
+            sender = st.selectbox("의뢰 업체 (화주)", ["Macon Food Distributors (GA)", "Norcross Asian Wholesale (GA)", "Texas Beef Packers (TX)", "기타 업체 (직접 입력)"])
+            origin = st.selectbox("상차지 (Origin - 타지역)", ["TX (Texas)", "FL (Florida)", "NJ (New Jersey)", "NC (North Carolina)", "기타 지역"])
+            destination = st.selectbox("하차지 (Destination)", ["GA (Georgia Main Hub)", "기타 경유지"])
+            item_desc = st.text_input("화물 내용 (품목 무관)", placeholder="예: 상온 공산품, 포장 자재, 건축 자재 등")
+            pallets = st.number_input("물량 (Pallets)", min_value=1, max_value=26, value=1)
+            date = st.date_input("희망 상차일")
+            submitted = st.form_submit_button("백홀 운송 의뢰 접수")
+            
+            if submitted:
+                st.success(f"✅ {sender}님의 {origin} ➡️ {destination} 구간 화물({pallets} Pallets) 운송 의뢰가 성공적으로 접수되었습니다. 배차 담당자가 곧 연락드리겠습니다.")
+                
+    with col2:
+        st.markdown("#### 🚚 실시간 귀환 트럭 (Backhaul 매칭 가능 트럭)")
+        st.info("타 지역에서 배송을 마치고 GA로 돌아오는(Inbound) 당사 트럭의 빈 공간을 활용해 합리적인 운임으로 매칭해 드립니다.")
+        
+        backhaul_trucks = pd.DataFrame([
+            {"트럭 ID": "TRK-901", "현재 위치(상차지)": "TX (Dallas)", "하차지": "GA (Hub)", "출발 예정": "내일 오전", "잔여 공간": "12 Pallets", "상태": "매칭 가능"},
+            {"트럭 ID": "TRK-905", "현재 위치(상차지)": "FL (Miami)", "하차지": "GA (Hub)", "출발 예정": "오늘 오후", "잔여 공간": "26 Pallets (완전공차)", "상태": "매칭 가능"},
+            {"트럭 ID": "TRK-912", "현재 위치(상차지)": "NJ (Trenton)", "하차지": "GA (Hub)", "출발 예정": "모레", "잔여 공간": "4 Pallets", "상태": "공간 협소"}
+        ])
+        st.dataframe(backhaul_trucks, hide_index=True, use_container_width=True)
+        
+        st.markdown("""
+        <div class="warning-box" style="background-color: #f0fdf4; border-color: #bbf7d0; color: #166534;">
+            <b>💡 3PL 백홀 비즈니스 모델:</b><br>
+            아웃바운드(프론트홀) 물량은 자사 상품으로 이미 고정되어 있습니다. 본 서비스는 <b>배송 완료 후 조지아 본사로 돌아오는 빈 트럭(Backhaul)</b>을 활용하여, 타 업체의 화물(품목 무관)을 운송함으로써 <b>운송 원가 절감 및 추가 수익</b>을 창출하는 핵심 기능입니다.
+        </div>
+        """, unsafe_allow_html=True)
 
 def view_local_partners():
     render_official_header()
@@ -395,6 +424,8 @@ elif st.session_state.current_menu == "시장가 비교 & 수익성 분석":
     view_market_comparison()
 elif st.session_state.current_menu == "로컬 파트너 검색":
     view_local_partners()
+elif st.session_state.current_menu == "B2B 백홀 화물 운송 (3PL)":
+    view_3pl_freight()
 elif st.session_state.current_menu == "데이터 통합 관리":
     render_official_header()
     st.subheader("⚙️ 데이터 관리")
