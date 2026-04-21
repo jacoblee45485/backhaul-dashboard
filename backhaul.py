@@ -25,23 +25,26 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 커스텀 CSS (줄바꿈 없이 한 줄로 연결하여 Markdown 인식 방지)
+# 커스텀 CSS (모든 모서리를 각지게 변경: border-radius: 0px)
 custom_css = (
     "<style>"
     ".block-container { padding-top: 1.5rem; }"
-    ".metric-card { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }"
+    ".metric-card { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 0px; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }"
     ".metric-label { font-size: 0.9rem; color: #64748b; font-weight: 600; margin-bottom: 5px; }"
     ".metric-value { font-size: 1.8rem; font-weight: 900; color: #0f172a; }"
-    ".status-badge { padding: 2px 10px; border-radius: 20px; font-size: 0.75rem; background-color: #dcfce7; color: #166534; font-weight: bold; }"
-    ".warning-box { padding: 15px; border-radius: 10px; background-color: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; margin-bottom: 20px; }"
+    ".status-badge { padding: 2px 10px; border-radius: 0px; font-size: 0.75rem; background-color: #dcfce7; color: #166534; font-weight: bold; }"
+    ".warning-box { padding: 15px; border-radius: 0px; background-color: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; margin-bottom: 20px; }"
+    ".stButton>button { border-radius: 0px; }"
+    ".stTextInput>div>div>input { border-radius: 0px; }"
+    ".stSelectbox>div>div>div { border-radius: 0px; }"
     "</style>"
 )
 st.markdown(custom_css, unsafe_allow_html=True)
 
 def render_official_header():
-    # 타이틀 박스의 네 모서리 둥글기를 30px로 완벽하게 일치시킴 (Symmetrical Corner Rounding)
+    # 타이틀 박스의 모든 모서리 둥글기를 제거 (border-radius: 0px)
     header_html = (
-        '<div style="background-color: #f8fafc; padding: 30px 20px; border-radius: 30px 30px 30px 30px; border: 2px solid #e2e8f0; margin-bottom: 30px; text-align: center;">'
+        '<div style="background-color: #f8fafc; padding: 30px 20px; border-radius: 0px; border: 2px solid #e2e8f0; margin-bottom: 30px; text-align: center;">'
         '<h1 style="margin: 0; font-size: 3.5rem; font-weight: 900; letter-spacing: -2px; line-height: 1.1;">'
         '<span style="color: #E31837;">GIANT</span> <span style="color: #000000;">FOODSYSTEM</span>'
         '</h1>'
@@ -357,21 +360,23 @@ def view_3pl_freight():
                     idx2 = i * 2 + 1  
                     
                     # 빈 div 태그가 Streamlit 필터에 의해 삭제되는 것을 막기 위해 &nbsp; (공백) 추가
+                    # 모든 모서리를 각지게 처리 (border-radius: 0px)
                     if idx1 < truck["used"]:
-                        row1_html += '<div style="width: 24px; height: 24px; background-color: #94a3b8; border-radius: 3px; flex-shrink: 0;">&nbsp;</div>'
+                        row1_html += '<div style="width: 24px; height: 24px; background-color: #94a3b8; border-radius: 0px; flex-shrink: 0;">&nbsp;</div>'
                     else:
-                        row1_html += '<div style="width: 24px; height: 24px; background-color: #dcfce7; border-radius: 3px; border: 2px solid #22c55e; box-sizing: border-box; flex-shrink: 0;">&nbsp;</div>'
+                        row1_html += '<div style="width: 24px; height: 24px; background-color: #dcfce7; border-radius: 0px; border: 2px solid #22c55e; box-sizing: border-box; flex-shrink: 0;">&nbsp;</div>'
                         
                     if idx2 < truck["used"]:
-                        row2_html += '<div style="width: 24px; height: 24px; background-color: #94a3b8; border-radius: 3px; flex-shrink: 0;">&nbsp;</div>'
+                        row2_html += '<div style="width: 24px; height: 24px; background-color: #94a3b8; border-radius: 0px; flex-shrink: 0;">&nbsp;</div>'
                     else:
-                        row2_html += '<div style="width: 24px; height: 24px; background-color: #dcfce7; border-radius: 3px; border: 2px solid #22c55e; box-sizing: border-box; flex-shrink: 0;">&nbsp;</div>'
+                        row2_html += '<div style="width: 24px; height: 24px; background-color: #dcfce7; border-radius: 0px; border: 2px solid #22c55e; box-sizing: border-box; flex-shrink: 0;">&nbsp;</div>'
     
                 # 들여쓰기를 완벽히 제거하여 Markdown 코드 블록으로 잘못 인식되는 것을 원천 차단
-                truck_html = f"""<div style="border: 1px solid #e2e8f0; border-radius: 10px; padding: 15px; margin-bottom: 15px; background-color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                # 박스 모서리도 모두 0px로 각지게 수정
+                truck_html = f"""<div style="border: 1px solid #e2e8f0; border-radius: 0px; padding: 15px; margin-bottom: 15px; background-color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
 <strong style="font-size: 1.2em; color: #0f172a;">🚛 {truck['id']}</strong>
-<span style="background-color: #f1f5f9; color: #334155; padding: 3px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; border: 1px solid #cbd5e1;">{truck['status']}</span>
+<span style="background-color: #f1f5f9; color: #334155; padding: 3px 12px; border-radius: 0px; font-size: 0.8rem; font-weight: bold; border: 1px solid #cbd5e1;">{truck['status']}</span>
 </div>
 <div style="color: #475569; font-size: 0.9em; margin-bottom: 12px;">
 📍 <b>{truck['origin']}</b> ➡️ <b>{truck['destination']}</b> &nbsp;|&nbsp; 🕒 {truck['schedule']}
@@ -380,8 +385,8 @@ def view_3pl_freight():
 <span><b>적재 공간 현황</b> (총 22 PLT)</span>
 <span>사용: {truck['used']} &nbsp;|&nbsp; <b style="color: #16a34a; font-size: 1.1em;">잔여: {truck['available']} PLT</b></span>
 </div>
-<div style="display: flex; align-items: center; background-color: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; overflow-x: auto;">
-<div style="background-color: #cbd5e1; color: #334155; padding: 8px 4px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; margin-right: 12px; text-align: center; min-width: 40px; flex-shrink: 0;">안쪽<br>(Front)</div>
+<div style="display: flex; align-items: center; background-color: #f8fafc; padding: 12px; border-radius: 0px; border: 1px solid #e2e8f0; overflow-x: auto;">
+<div style="background-color: #cbd5e1; color: #334155; padding: 8px 4px; border-radius: 0px; font-size: 0.65rem; font-weight: bold; margin-right: 12px; text-align: center; min-width: 40px; flex-shrink: 0;">안쪽<br>(Front)</div>
 <div style="display: flex; flex-direction: column; gap: 5px; flex-shrink: 0;">
 <div style="display: flex; flex-direction: row; gap: 5px;">
 {row1_html}
@@ -393,8 +398,8 @@ def view_3pl_freight():
 <div style="margin-left: auto; padding-left: 12px; color: #64748b; font-size: 0.65rem; font-weight: bold; text-align: center; border-left: 2px dashed #cbd5e1; min-width: 40px; flex-shrink: 0;">뒷문<br>(Doors)</div>
 </div>
 <div style="display: flex; gap: 15px; margin-top: 10px; font-size: 0.8rem; color: #64748b;">
-<div style="display: flex; align-items: center;"><div style="width: 12px; height: 12px; background-color: #94a3b8; border-radius: 2px; margin-right: 6px; flex-shrink: 0;">&nbsp;</div>타 화물 적재됨</div>
-<div style="display: flex; align-items: center;"><div style="width: 12px; height: 12px; background-color: #dcfce7; border: 1.5px solid #22c55e; border-radius: 2px; margin-right: 6px; flex-shrink: 0;">&nbsp;</div><b>예약 가능 (잔여 여유 공간)</b></div>
+<div style="display: flex; align-items: center;"><div style="width: 12px; height: 12px; background-color: #94a3b8; border-radius: 0px; margin-right: 6px; flex-shrink: 0;">&nbsp;</div>타 화물 적재됨</div>
+<div style="display: flex; align-items: center;"><div style="width: 12px; height: 12px; background-color: #dcfce7; border: 1.5px solid #22c55e; border-radius: 0px; margin-right: 6px; flex-shrink: 0;">&nbsp;</div><b>예약 가능 (잔여 여유 공간)</b></div>
 </div>
 </div>"""
                 st.markdown(truck_html, unsafe_allow_html=True)
