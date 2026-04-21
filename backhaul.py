@@ -366,9 +366,30 @@ def view_3pl_freight():
 <span style="background-color: #f1f5f9; color: #334155; padding: 3px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; border: 1px solid #cbd5e1;">{truck['status']}</span>
 </div>
 <div style="color: #475569; font-size: 0.9em; margin-bottom: 12px;">
-                f'</div>'
-            )
-            st.markdown(truck_html, unsafe_allow_html=True)
+📍 <b>{truck['origin']}</b> ➡️ <b>{truck['destination']}</b> &nbsp;|&nbsp; 🕒 {truck['schedule']}
+</div>
+<div style="font-size: 0.85em; color: #334155; margin-bottom: 6px; display: flex; justify-content: space-between;">
+<span><b>적재 공간 현황</b> (총 22 PLT)</span>
+<span>사용: {truck['used']} &nbsp;|&nbsp; <b style="color: #16a34a; font-size: 1.1em;">잔여: {truck['available']} PLT</b></span>
+</div>
+<div style="display: flex; align-items: center; background-color: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; overflow-x: auto;">
+<div style="background-color: #cbd5e1; color: #334155; padding: 8px 4px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; margin-right: 12px; text-align: center; min-width: 40px; flex-shrink: 0;">안쪽<br>(Front)</div>
+<div style="display: flex; flex-direction: column; gap: 5px; flex-shrink: 0;">
+<div style="display: flex; flex-direction: row; gap: 5px;">
+{row1_html}
+</div>
+<div style="display: flex; flex-direction: row; gap: 5px;">
+{row2_html}
+</div>
+</div>
+<div style="margin-left: auto; padding-left: 12px; color: #64748b; font-size: 0.65rem; font-weight: bold; text-align: center; border-left: 2px dashed #cbd5e1; min-width: 40px; flex-shrink: 0;">뒷문<br>(Doors)</div>
+</div>
+<div style="display: flex; gap: 15px; margin-top: 10px; font-size: 0.8rem; color: #64748b;">
+<div style="display: flex; align-items: center;"><div style="width: 12px; height: 12px; background-color: #94a3b8; border-radius: 2px; margin-right: 6px; flex-shrink: 0;">&nbsp;</div>타 화물 적재됨</div>
+<div style="display: flex; align-items: center;"><div style="width: 12px; height: 12px; background-color: #dcfce7; border: 1.5px solid #22c55e; border-radius: 2px; margin-right: 6px; flex-shrink: 0;">&nbsp;</div><b>예약 가능 (잔여 여유 공간)</b></div>
+</div>
+</div>"""
+                st.markdown(truck_html, unsafe_allow_html=True)
             
             info_html = (
                 '<div class="warning-box" style="background-color: #f0fdf4; border-color: #bbf7d0; color: #166534; margin-top: 20px;">'
@@ -447,12 +468,15 @@ def view_3pl_freight():
                         return 'color: #16a34a; font-weight: bold; background-color: #f0fdf4;'
                 return ''
             
-            styled_df = df_profit.style.map(highlight_profit, subset=["순이익($)", "이익률(%)"]).format({
-                "운송매출($)": "${:,.0f}", 
-                "한계비용($)": "${:,.0f}", 
-                "순이익($)": "${:,.0f}", 
-                "이익률(%)": "{:.1f}%"
-            })
+            # 파이썬 구문 오류(Syntax Error)를 방지하기 위한 Lambda 포맷팅 방식 적용
+            format_dict = {
+                "운송매출($)": lambda x: f"${x:,.0f}", 
+                "한계비용($)": lambda x: f"${x:,.0f}", 
+                "순이익($)": lambda x: f"${x:,.0f}", 
+                "이익률(%)": lambda x: f"{x:.1f}%"
+            }
+            
+            styled_df = df_profit.style.map(highlight_profit, subset=["순이익($)", "이익률(%)"]).format(format_dict)
             
             st.dataframe(styled_df, use_container_width=True, hide_index=True)
 
