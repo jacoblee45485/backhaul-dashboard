@@ -143,7 +143,8 @@ st.sidebar.markdown("""
 """, unsafe_allow_html=True)
 st.sidebar.markdown("---")
 
-menus = ["통합 주문 현황", "품목별 시장가 비교", "로컬 파트너 검색", "데이터 통합 관리"]
+# 메뉴명 변경: 시장가 비교 & 수익성 분석
+menus = ["통합 주문 현황", "시장가 비교 & 수익성 분석", "로컬 파트너 검색", "데이터 통합 관리"]
 for menu in menus:
     if st.sidebar.button(menu, key=f"sidebar_{menu}", use_container_width=True):
         st.session_state.current_menu = menu
@@ -166,21 +167,98 @@ def view_unified_dashboard():
 
 def view_market_comparison():
     render_official_header()
-    st.subheader("📈 USDA 실시간 품목 시세 분석")
-    report_id = st.text_input("조회할 USDA 리포트 번호 (숫자)", value="2498")
     
-    if report_id:
-        with st.spinner(f"Report {report_id} 데이터를 분석 중..."):
-            df_market, status = fetch_usda_market_data(report_id)
-            if status == "success":
-                st.success(f"✅ Report {report_id}에서 유효한 가격 정보를 찾았습니다.")
-                price_col = 'avg_price' if 'avg_price' in df_market.columns else 'price'
-                if PLOTLY_AVAILABLE:
-                    fig = px.bar(df_market.head(15), x=df_market.head(15).index, y=price_col, title=f"품목별 평균 단가 ($)", color_discrete_sequence=['#E31837'])
-                    st.plotly_chart(fig, use_container_width=True)
-                st.dataframe(df_market[[price_col]].head(10))
-            elif status == "empty_shell":
-                st.warning("데이터는 존재하나 유효한 가격 정보가 없습니다.")
+    # 탭으로 기능 분리: 원본 데이터 조회 vs 가공된 타겟 분석
+    tab1, tab2 = st.tabs(["🎯 백홀 타겟 아이템 분석 (10% 룰 적용)", "📈 USDA 실시간 API 원본 조회"])
+    
+    with tab1:
+        st.subheader("💡 지역별 단가 비교 및 백홀 타겟 아이템 선정")
+        st.markdown("조지아(GA) 본사의 조달가 대비 **단가 차이가 10% 이상 저렴한** 타 지역 품목만 자동으로 타겟 아이템(Target)으로 분류하며, 차이가 미미한 품목은 검토 대상에서 제외(Exclude)합니다.")
+        
+        # 10% 마진율 조정 슬라이더
+        target_margin = st.slider("목표 마진율(%) 기준 설정", min_value=5, max_value=20, value=10, step=1)
+        
+        # 분석용 데이터 (GA 단가 vs 타 지역 단가 비교 시뮬레이션)
+        analysis_data = [
+            {"품목": "Beef Ribeye (소고기 립아이)", "카테고리": "Meat", "비교지역": "TX", "GA_기준단가": 8.50, "타지역_현지단가": 7.10},
+            {"품목": "Pork Belly (삼겹살)", "카테고리": "Meat", "비교지역": "TX", "GA_기준단가": 4.10, "타지역_현지단가": 3.90}, # 차이 4.8%
+            {"품목": "Citrus (오렌지/자몽)", "카테고리": "Fruits", "비교지역": "FL", "GA_기준단가": 24.00, "타지역_현지단가": 18.50}, # 차이 22.9%
+            {"품목": "Fresh Shrimp (생물 새우)", "카테고리": "Seafood", "비교지역": "FL", "GA_기준단가": 12.50, "타지역_현지단가": 9.80}, # 차이 21.6%
+            {"품목": "Blueberry (블루베리)", "카테고리": "Fruits", "비교지역": "NJ", "GA_기준단가": 32.00, "타지역_현지단가": 26.50}, # 차이 17.1%
+            {"품목": "Peanuts (땅콩)", "카테고리": "Agri", "비교지역": "NC", "GA_기준단가": 1.20, "타지역_현지단가": 1.15}, # 차이 4.1%
+            {"품목": "Whole Chicken (통닭)", "카테고리": "Poultry", "비교지역": "AR", "GA_기준단가": 1.45, "타지역_현지단가": 1.38}, # 차이 4.8%
+        ]
+        
+        df_analysis = pd.DataFrame(analysis_data)
+        
+        # 10% 룰 마진율 계산식: ((GA단가 - 타지역단가) / GA단가) * 100
+        df_analysis["단가차이(%)"] = ((df_analysis["GA_기준단가"] - df_analysis["타지역_현지단가"]) / df_analysis["GA_기준단가"] * 100).round(1)
+        
+        # 판정 로직: 설정된 마진(기본 10%) 이상이면 타겟, 아니면 제외
+        def judge_target(margin):
+            if margin >= target_margin:
+                return "🎯 타겟 아이템"
+            else:
+                return "❌ 검토 제외"
+                
+        df_analysis["시스템 판정"] = df_analysis["단가차이(%)"].apply(judge_target)
+        
+        # 시각화를 위한 정렬 (마진 높은 순)
+        df_analysis = df_analysis.sort_values(by="단가차이(%)", ascending=False).reset_index(drop=True)
+        
+        # 타겟 아이템만 필터링하여 시각화 (Plotly)
+        df_target_only = df_analysis[df_analysis["단가차이(%)"] >= target_margin]
+        
+        col1, col2 = st.columns([1.5, 1])
+        with col1:
+            # 데이터프레임 하이라이팅 (타겟 아이템은 초록색, 제외는 회색)
+            def highlight_status(val):
+                if "타겟" in val: return 'color: #166534; background-color: #dcfce7; font-weight: bold'
+                elif "제외" in val: return 'color: #64748b; background-color: #f1f5f9'
+                return ''
+                
+            st.dataframe(
+                df_analysis.style.map(highlight_status, subset=['시스템 판정']),
+                use_container_width=True,
+                hide_index=True
+            )
+            
+        with col2:
+            st.markdown(f"**🔥 백홀 타겟 확정 품목 (차익 {target_margin}% 이상)**")
+            if not df_target_only.empty:
+                for idx, row in df_target_only.iterrows():
+                    st.success(f"{row['비교지역']} - {row['품목']}\n(마진: {row['단가차이(%)']}%)")
+            else:
+                st.warning("조건을 만족하는 타겟 아이템이 없습니다.")
+
+    with tab2:
+        st.markdown("USDA MARS API를 통해 특정 리포트의 실시간 가공되지 않은 원본 시세를 조회합니다.")
+        with st.expander("📌 주요 품목별 Report ID 가이드", expanded=False):
+            st.markdown("""
+            - **닭고기 (Poultry):** 2752 (National Whole Broiler)
+            - **돼지고기 (Pork):** 2498 (National Daily Pork Carcass)
+            - **소고기 (Beef):** 2461 (National Weekly Boxed Beef)
+            """)
+
+        report_id = st.text_input("조회할 USDA 리포트 번호 (숫자)", value="2498")
+        
+        if report_id:
+            with st.spinner(f"Report {report_id} 데이터를 분석 중..."):
+                df_market, status = fetch_usda_market_data(report_id)
+                if status == "success":
+                    st.success(f"✅ Report {report_id}에서 유효한 가격 정보를 찾았습니다.")
+                    price_col = 'avg_price' if 'avg_price' in df_market.columns else 'price'
+                    if PLOTLY_AVAILABLE:
+                        fig = px.bar(df_market.head(15), x=df_market.head(15).index, y=price_col, title=f"품목별 평균 단가 ($)", color_discrete_sequence=['#E31837'])
+                        st.plotly_chart(fig, use_container_width=True)
+                    st.dataframe(df_market[[price_col]].head(10))
+                elif status == "empty_shell":
+                    st.markdown(f"""
+                    <div class="warning-box">
+                        <b>[데이터 경고]</b> 의미 없는 껍데기 데이터(표지)를 자동으로 걸러냈습니다!<br>
+                        조회하신 숫자 번호(<b>{report_id}</b>)는 실제 가격 정보가 없습니다. 다른 ID를 입력해 보세요!
+                    </div>
+                    """, unsafe_allow_html=True)
 
 def view_local_partners():
     render_official_header()
@@ -196,112 +274,88 @@ def view_local_partners():
     ])
     
     with tab1:
-        # 텍사스 로컬 육류 공급처 데모 데이터
         tx_suppliers = pd.DataFrame([
             {"업체명": "Texas Beef Packers", "도시": "Dallas", "취급품목": "Beef", "상태": "계약 검토중", "lat": 32.7767, "lon": -96.7970},
             {"업체명": "Houston Wholesale Meat", "도시": "Houston", "취급품목": "Beef/Pork", "상태": "컨택 요망", "lat": 29.7604, "lon": -95.3698},
             {"업체명": "Austin Poultry Farms", "도시": "Austin", "취급품목": "Poultry", "상태": "계약 검토중", "lat": 30.2672, "lon": -97.7431},
             {"업체명": "San Antonio Meats", "도시": "San Antonio", "취급품목": "Pork", "상태": "컨택 요망", "lat": 29.4241, "lon": -98.4936}
         ])
-        
         c1, c2 = st.columns([1, 1.5])
         with c1:
             st.dataframe(tx_suppliers[["업체명", "도시", "취급품목", "상태"]], use_container_width=True, hide_index=True)
-            st.info("💡 **팁:** 구글 시트 'Suppliers' 탭을 통해 USDA 육류가공업체 데이터를 연동하면 더욱 촘촘한 배차망을 구축할 수 있습니다.")
         with c2:
             if PLOTLY_AVAILABLE:
-                fig1 = px.scatter_geo(tx_suppliers, lat='lat', lon='lon', text='업체명', color='취급품목',
-                                     scope='usa', title="Texas Local Meat Suppliers Map",
-                                     color_discrete_sequence=['#E31837', '#0F4C81', '#166534'])
+                fig1 = px.scatter_geo(tx_suppliers, lat='lat', lon='lon', text='업체명', color='취급품목', scope='usa', title="Texas Local Meat Suppliers Map", color_discrete_sequence=['#E31837', '#0F4C81', '#166534'])
                 fig1.update_geos(fitbounds="locations")
                 st.plotly_chart(fig1, use_container_width=True)
 
     with tab2:
-        # 플로리다 농/수산물 공급처 데모 데이터
         fl_suppliers = pd.DataFrame([
             {"업체명": "Jacksonville Seafood Co.", "도시": "Jacksonville", "취급품목": "Seafood", "상태": "계약 완료", "lat": 30.3322, "lon": -81.6557},
             {"업체명": "Tampa Citrus Farms", "도시": "Tampa", "취급품목": "Citrus/Fruits", "상태": "계약 검토중", "lat": 27.9506, "lon": -82.4572},
             {"업체명": "Miami Ocean Catch", "도시": "Miami", "취급품목": "Seafood", "상태": "컨택 요망", "lat": 25.7617, "lon": -80.1918},
             {"업체명": "Orlando Fresh Greens", "도시": "Orlando", "취급품목": "Vegetables", "상태": "컨택 요망", "lat": 28.5383, "lon": -81.3792}
         ])
-        
         c3, c4 = st.columns([1, 1.5])
         with c3:
             st.dataframe(fl_suppliers[["업체명", "도시", "취급품목", "상태"]], use_container_width=True, hide_index=True)
-            st.info("💡 **팁:** 플로리다는 오렌지/자몽 등 감귤류 농장과 해안가 수산물(새우, 생선류) 소싱이 백홀 최적화에 유리합니다.")
         with c4:
             if PLOTLY_AVAILABLE:
-                fig2 = px.scatter_geo(fl_suppliers, lat='lat', lon='lon', text='업체명', color='취급품목',
-                                     scope='usa', title="Florida Agri/Seafood Suppliers Map",
-                                     color_discrete_sequence=['#0EA5E9', '#F59E0B', '#10B981'])
+                fig2 = px.scatter_geo(fl_suppliers, lat='lat', lon='lon', text='업체명', color='취급품목', scope='usa', title="Florida Agri/Seafood Suppliers Map", color_discrete_sequence=['#0EA5E9', '#F59E0B', '#10B981'])
                 fig2.update_geos(fitbounds="locations")
                 st.plotly_chart(fig2, use_container_width=True)
                 
     with tab3:
-        # 조지아 농/축산물 공급처 데모 데이터 (도매처 분리)
         ga_suppliers = pd.DataFrame([
             {"업체명": "Gainesville Poultry", "도시": "Gainesville", "취급품목": "Poultry", "상태": "메인 파트너", "lat": 34.2978, "lon": -83.8240},
             {"업체명": "Albany Peanut Co.", "도시": "Albany", "취급품목": "Agri/Peanuts", "상태": "계약 완료", "lat": 31.5785, "lon": -84.1557},
             {"업체명": "Savannah Seafood", "도시": "Savannah", "취급품목": "Seafood", "상태": "컨택 요망", "lat": 32.0809, "lon": -81.0912},
             {"업체명": "Atlanta Fresh Meats", "도시": "Atlanta", "취급품목": "Beef/Pork", "상태": "메인 파트너", "lat": 33.7490, "lon": -84.3880}
         ])
-        
         c5, c6 = st.columns([1, 1.5])
         with c5:
             st.dataframe(ga_suppliers[["업체명", "도시", "취급품목", "상태"]], use_container_width=True, hide_index=True)
-            st.info("💡 **팁:** 조지아(GA)는 당사 물류 메인 허브이면서 동시에 가금류(Poultry) 및 주요 농작물의 핵심 생산 기지(조달처)입니다.")
         with c6:
             if PLOTLY_AVAILABLE:
-                fig3 = px.scatter_geo(ga_suppliers, lat='lat', lon='lon', text='업체명', color='취급품목',
-                                     scope='usa', title="Georgia Agri/Livestock Suppliers Map",
-                                     color_discrete_sequence=['#F59E0B', '#E31837', '#0EA5E9', '#10B981'])
+                fig3 = px.scatter_geo(ga_suppliers, lat='lat', lon='lon', text='업체명', color='취급품목', scope='usa', title="Georgia Agri/Livestock Suppliers Map", color_discrete_sequence=['#F59E0B', '#E31837', '#0EA5E9', '#10B981'])
                 fig3.update_geos(fitbounds="locations")
                 st.plotly_chart(fig3, use_container_width=True)
                 
     with tab4:
-        # 뉴저지 농/수산물 공급처 데모 데이터
         nj_suppliers = pd.DataFrame([
             {"업체명": "Hammonton Blueberry Farms", "도시": "Hammonton", "취급품목": "Fruits", "상태": "계약 검토중", "lat": 39.6364, "lon": -74.8036},
             {"업체명": "Cape May Catch", "도시": "Cape May", "취급품목": "Seafood", "상태": "계약 완료", "lat": 38.9351, "lon": -74.9060},
             {"업체명": "Vineland Produce", "도시": "Vineland", "취급품목": "Vegetables", "상태": "컨택 요망", "lat": 39.4863, "lon": -75.0259},
             {"업체명": "Trenton Meats", "도시": "Trenton", "취급품목": "Meat/Poultry", "상태": "메인 파트너", "lat": 40.2170, "lon": -74.7429}
         ])
-        
         c7, c8 = st.columns([1, 1.5])
         with c7:
             st.dataframe(nj_suppliers[["업체명", "도시", "취급품목", "상태"]], use_container_width=True, hide_index=True)
-            st.info("💡 **팁:** 뉴저지(NJ) 허브 인근 지역은 블루베리, 토마토 등의 신선 농산물과 해안 지역의 수산물 백홀 최적화에 이상적입니다.")
         with c8:
             if PLOTLY_AVAILABLE:
-                fig4 = px.scatter_geo(nj_suppliers, lat='lat', lon='lon', text='업체명', color='취급품목',
-                                     scope='usa', title="New Jersey Agri/Seafood Suppliers Map",
-                                     color_discrete_sequence=['#10B981', '#0EA5E9', '#F59E0B', '#E31837'])
+                fig4 = px.scatter_geo(nj_suppliers, lat='lat', lon='lon', text='업체명', color='취급품목', scope='usa', title="New Jersey Agri/Seafood Suppliers Map", color_discrete_sequence=['#10B981', '#0EA5E9', '#F59E0B', '#E31837'])
                 fig4.update_geos(fitbounds="locations")
                 st.plotly_chart(fig4, use_container_width=True)
 
     with tab5:
-        # 조지아 로컬 홀세일러 (B2B 잠재 고객) 데모 데이터
         ga_wholesale = pd.DataFrame([
             {"업체명": "Macon Food Distributors", "도시": "Macon", "취급품목": "Wholesale", "상태": "판매 협의중", "lat": 32.8407, "lon": -83.6324},
             {"업체명": "Norcross Asian Wholesale", "도시": "Norcross", "취급품목": "Wholesale", "상태": "타겟 고객", "lat": 33.9412, "lon": -84.2135},
             {"업체명": "Buford Farmers Wholesale", "도시": "Buford", "취급품목": "Retail/Wholesale", "상태": "신규 발굴", "lat": 34.1207, "lon": -84.0044}
         ])
-        
         c9, c10 = st.columns([1, 1.5])
         with c9:
             st.dataframe(ga_wholesale[["업체명", "도시", "취급품목", "상태"]], use_container_width=True, hide_index=True)
             st.info("💡 **세일즈 포인트:** 조지아 로컬 홀세일러들은 자사 백홀 네트워크를 통해 확보한 원물을 대량으로 공급할 수 있는 핵심 잠재 B2B 판매처입니다.")
         with c10:
             if PLOTLY_AVAILABLE:
-                fig5 = px.scatter_geo(ga_wholesale, lat='lat', lon='lon', text='업체명', color='취급품목',
-                                     scope='usa', title="Georgia Wholesale Customers (B2B) Map",
-                                     color_discrete_sequence=['#8B5CF6', '#EC4899'])
+                fig5 = px.scatter_geo(ga_wholesale, lat='lat', lon='lon', text='업체명', color='취급품목', scope='usa', title="Georgia Wholesale Customers (B2B) Map", color_discrete_sequence=['#8B5CF6', '#EC4899'])
                 fig5.update_geos(fitbounds="locations")
                 st.plotly_chart(fig5, use_container_width=True)
 
 if st.session_state.current_menu == "통합 주문 현황":
     view_unified_dashboard()
-elif st.session_state.current_menu == "품목별 시장가 비교":
+elif st.session_state.current_menu == "시장가 비교 & 수익성 분석":
     view_market_comparison()
 elif st.session_state.current_menu == "로컬 파트너 검색":
     view_local_partners()
