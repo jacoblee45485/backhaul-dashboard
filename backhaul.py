@@ -303,60 +303,61 @@ def view_market_comparison():
 
 def view_3pl_freight():
     render_official_header()
-    st.subheader("🚛 B2B 백홀 화물 운송 의뢰 (3PL 서비스)")
-    st.markdown("아웃바운드(프론트홀) 배송을 마치고 **조지아(GA) 메인 허브로 귀환하는 백홀 트럭**의 여유 공간을 활용하여, 품목에 무관하게 화물을 운송해 드리는 접수처입니다.")
+    st.subheader("🚛 B2B 백홀 화물 운송 의뢰 & 수익 분석 (3PL)")
+    st.markdown("아웃바운드(프론트홀) 배송을 마치고 **조지아(GA) 메인 허브로 귀환하는 백홀 트럭**의 여유 공간을 활용하여, 품목에 무관하게 화물을 운송해 드리는 접수처 및 수익 분석 대시보드입니다.")
     
-    col1, col2 = st.columns([1, 1.2])
+    tab1, tab2 = st.tabs(["📝 운송 의뢰 및 실시간 매칭", "📊 백홀 운송 실적 및 수익성 분석"])
     
-    with col1:
-        st.markdown("#### 📝 백홀 운송 의뢰서 작성")
-        with st.form("freight_form"):
-            sender = st.selectbox("의뢰 업체 (화주)", ["Macon Food Distributors (GA)", "Norcross Asian Wholesale (GA)", "Texas Beef Packers (TX)", "기타 업체 (직접 입력)"])
-            origin = st.selectbox("상차지 (Origin - 타지역)", ["TX (Texas)", "FL (Florida)", "NJ (New Jersey)", "NC (North Carolina)", "기타 지역"])
-            destination = st.selectbox("하차지 (Destination)", ["GA (Georgia Main Hub)", "기타 경유지"])
-            item_desc = st.text_input("화물 내용 (품목 무관)", placeholder="예: 상온 공산품, 포장 자재, 건축 자재 등")
-            
-            # 22팔렛 최대 적재 반영
-            pallets = st.number_input("물량 (Pallets)", min_value=1, max_value=22, value=1)
-            
-            date = st.date_input("희망 상차일")
-            submitted = st.form_submit_button("백홀 운송 의뢰 접수")
-            
-            if submitted:
-                st.success(f"✅ {sender}님의 {origin} ➡️ {destination} 구간 화물({pallets} Pallets) 운송 의뢰가 성공적으로 접수되었습니다. 배차 담당자가 곧 연락드리겠습니다.")
-                
-    with col2:
-        st.markdown("#### 🚚 실시간 귀환 트럭 적재 공간 시각화")
-        st.info("타 지역에서 배송을 마치고 GA로 돌아오는(Inbound) 당사 트럭의 빈 공간 현황입니다. (최대 22 Pallets)")
+    with tab1:
+        col1, col2 = st.columns([1, 1.2])
         
-        # 트럭 현황 시각화용 데이터 (최대 적재 22)
-        backhaul_trucks = [
-            {"id": "TRK-901", "origin": "TX (Dallas)", "destination": "GA (Hub)", "schedule": "내일 오전 출발", "used": 10, "available": 12, "status": "매칭 가능"},
-            {"id": "TRK-905", "origin": "FL (Miami)", "destination": "GA (Hub)", "schedule": "오늘 오후 출발", "used": 0, "available": 22, "status": "완전 공차"},
-            {"id": "TRK-912", "origin": "NJ (Trenton)", "destination": "GA (Hub)", "schedule": "모레 출발", "used": 18, "available": 4, "status": "공간 협소"}
-        ]
-        
-        for truck in backhaul_trucks:
-            row1_html = ""
-            row2_html = ""
-            
-            for i in range(11): 
-                idx1 = i * 2      
-                idx2 = i * 2 + 1  
+        with col1:
+            st.markdown("#### 📝 백홀 운송 의뢰서 작성")
+            with st.form("freight_form"):
+                sender = st.selectbox("의뢰 업체 (화주)", ["Macon Food Distributors (GA)", "Norcross Asian Wholesale (GA)", "Texas Beef Packers (TX)", "기타 업체 (직접 입력)"])
+                origin = st.selectbox("상차지 (Origin - 타지역)", ["TX (Texas)", "FL (Florida)", "NJ (New Jersey)", "NC (North Carolina)", "기타 지역"])
+                destination = st.selectbox("하차지 (Destination)", ["GA (Georgia Main Hub)", "기타 경유지"])
+                item_desc = st.text_input("화물 내용 (품목 무관)", placeholder="예: 상온 공산품, 포장 자재, 건축 자재 등")
                 
-                # 빈 div 태그가 Streamlit 필터에 의해 삭제되는 것을 막기 위해 &nbsp; (공백) 추가
-                if idx1 < truck["used"]:
-                    row1_html += '<div style="width: 24px; height: 24px; background-color: #94a3b8; border-radius: 3px; flex-shrink: 0;">&nbsp;</div>'
-                else:
-                    row1_html += '<div style="width: 24px; height: 24px; background-color: #dcfce7; border-radius: 3px; border: 2px solid #22c55e; box-sizing: border-box; flex-shrink: 0;">&nbsp;</div>'
+                # 22팔렛 최대 적재 반영
+                pallets = st.number_input("물량 (Pallets)", min_value=1, max_value=22, value=1)
+                
+                date = st.date_input("희망 상차일")
+                submitted = st.form_submit_button("백홀 운송 의뢰 접수")
+                
+                if submitted:
+                    st.success(f"✅ {sender}님의 {origin} ➡️ {destination} 구간 화물({pallets} Pallets) 운송 의뢰가 성공적으로 접수되었습니다. 배차 담당자가 곧 연락드리겠습니다.")
                     
-                if idx2 < truck["used"]:
-                    row2_html += '<div style="width: 24px; height: 24px; background-color: #94a3b8; border-radius: 3px; flex-shrink: 0;">&nbsp;</div>'
-                else:
-                    row2_html += '<div style="width: 24px; height: 24px; background-color: #dcfce7; border-radius: 3px; border: 2px solid #22c55e; box-sizing: border-box; flex-shrink: 0;">&nbsp;</div>'
+        with col2:
+            st.markdown("#### 🚚 실시간 귀환 트럭 적재 공간 시각화")
+            st.info("타 지역에서 배송을 마치고 GA로 돌아오는(Inbound) 당사 트럭의 빈 공간 현황입니다. (최대 22 Pallets)")
+            
+            # 트럭 현황 시각화용 데이터 (최대 적재 22)
+            backhaul_trucks = [
+                {"id": "TRK-901", "origin": "TX (Dallas)", "destination": "GA (Hub)", "schedule": "내일 오전 출발", "used": 10, "available": 12, "status": "매칭 가능"},
+                {"id": "TRK-905", "origin": "FL (Miami)", "destination": "GA (Hub)", "schedule": "오늘 오후 출발", "used": 0, "available": 22, "status": "완전 공차"},
+                {"id": "TRK-912", "origin": "NJ (Trenton)", "destination": "GA (Hub)", "schedule": "모레 출발", "used": 18, "available": 4, "status": "공간 협소"}
+            ]
+            
+            for truck in backhaul_trucks:
+                row1_html = ""
+                row2_html = ""
+                
+                for i in range(11): 
+                    idx1 = i * 2      
+                    idx2 = i * 2 + 1  
+                    
+                    if idx1 < truck["used"]:
+                        row1_html += '<div style="width: 24px; height: 24px; background-color: #94a3b8; border-radius: 3px; flex-shrink: 0;">&nbsp;</div>'
+                    else:
+                        row1_html += '<div style="width: 24px; height: 24px; background-color: #dcfce7; border-radius: 3px; border: 2px solid #22c55e; box-sizing: border-box; flex-shrink: 0;">&nbsp;</div>'
+                        
+                    if idx2 < truck["used"]:
+                        row2_html += '<div style="width: 24px; height: 24px; background-color: #94a3b8; border-radius: 3px; flex-shrink: 0;">&nbsp;</div>'
+                    else:
+                        row2_html += '<div style="width: 24px; height: 24px; background-color: #dcfce7; border-radius: 3px; border: 2px solid #22c55e; box-sizing: border-box; flex-shrink: 0;">&nbsp;</div>'
 
-            # 들여쓰기를 완벽히 제거하여 Markdown 코드 블록으로 잘못 인식되는 것을 원천 차단
-            truck_html = f"""<div style="border: 1px solid #e2e8f0; border-radius: 10px; padding: 15px; margin-bottom: 15px; background-color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                truck_html = f"""<div style="border: 1px solid #e2e8f0; border-radius: 10px; padding: 15px; margin-bottom: 15px; background-color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
 <strong style="font-size: 1.2em; color: #0f172a;">🚛 {truck['id']}</strong>
 <span style="background-color: #f1f5f9; color: #334155; padding: 3px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; border: 1px solid #cbd5e1;">{truck['status']}</span>
@@ -385,15 +386,71 @@ def view_3pl_freight():
 <div style="display: flex; align-items: center;"><div style="width: 12px; height: 12px; background-color: #dcfce7; border: 1.5px solid #22c55e; border-radius: 2px; margin-right: 6px; flex-shrink: 0;">&nbsp;</div><b>예약 가능 (잔여 여유 공간)</b></div>
 </div>
 </div>"""
-            st.markdown(truck_html, unsafe_allow_html=True)
+                st.markdown(truck_html, unsafe_allow_html=True)
+            
+            info_html = (
+                '<div class="warning-box" style="background-color: #f0fdf4; border-color: #bbf7d0; color: #166534; margin-top: 20px;">'
+                '<b>💡 3PL 백홀 비즈니스 모델:</b><br>'
+                '아웃바운드(프론트홀) 물량은 자사 상품으로 이미 고정되어 있습니다. 본 서비스는 <b>배송 완료 후 조지아 본사로 돌아오는 빈 트럭(Backhaul)</b>을 활용하여, 타 업체의 화물(품목 무관)을 운송함으로써 <b>운송 원가 절감 및 추가 수익</b>을 창출하는 핵심 기능입니다.'
+                '</div>'
+            )
+            st.markdown(info_html, unsafe_allow_html=True)
+
+    with tab2:
+        st.markdown("#### 💰 백홀 화물 운송 건별 수익성 분석")
+        st.info("공차 귀환 트럭을 활용해 창출한 3PL 물류 수익 내역입니다. 트럭 운행 고정비(기사 인건비, 기본 유류비)는 프론트홀(자사 배송)에서 이미 회수했으므로, 백홀에서 발생하는 수익은 화물 적재에 따른 **추가 한계비용(Marginal Cost)**만 제외하면 대부분 **순이익**으로 직결됩니다.")
         
-        info_html = (
-            '<div class="warning-box" style="background-color: #f0fdf4; border-color: #bbf7d0; color: #166534; margin-top: 20px;">'
-            '<b>💡 3PL 백홀 비즈니스 모델:</b><br>'
-            '아웃바운드(프론트홀) 물량은 자사 상품으로 이미 고정되어 있습니다. 본 서비스는 <b>배송 완료 후 조지아 본사로 돌아오는 빈 트럭(Backhaul)</b>을 활용하여, 타 업체의 화물(품목 무관)을 운송함으로써 <b>운송 원가 절감 및 추가 수익</b>을 창출하는 핵심 기능입니다.'
-            '</div>'
-        )
-        st.markdown(info_html, unsafe_allow_html=True)
+        # 분석용 데모 데이터 생성
+        profit_data = [
+            {"운송일자": "2026-04-15", "트럭ID": "TRK-881", "화주": "Texas Beef Packers", "출발지": "TX", "물량(PLT)": 22, "운송매출($)": 2800, "한계비용($)": 350},
+            {"운송일자": "2026-04-17", "트럭ID": "TRK-885", "화주": "Jacksonville Seafood", "출발지": "FL", "물량(PLT)": 18, "운송매출($)": 1600, "한계비용($)": 200},
+            {"운송일자": "2026-04-19", "트럭ID": "TRK-890", "화주": "Hammonton Farms", "출발지": "NJ", "물량(PLT)": 20, "운송매출($)": 2100, "한계비용($)": 400},
+            {"운송일자": "2026-04-20", "트럭ID": "TRK-892", "화주": "Houston Wholesale", "출발지": "TX", "물량(PLT)": 22, "운송매출($)": 3100, "한계비용($)": 380},
+            {"운송일자": "2026-04-21", "트럭ID": "TRK-900", "화주": "Miami Ocean Catch", "출발지": "FL", "물량(PLT)": 22, "운송매출($)": 2000, "한계비용($)": 250},
+        ]
+        df_profit = pd.DataFrame(profit_data)
+        
+        # 순이익 및 이익률 계산 (순이익 = 매출 - 한계비용)
+        df_profit["순이익($)"] = df_profit["운송매출($)"] - df_profit["한계비용($)"]
+        df_profit["이익률(%)"] = (df_profit["순이익($)"] / df_profit["운송매출($)"] * 100).round(1)
+        
+        # 상단 KPI 지표 계산
+        total_rev = df_profit["운송매출($)"].sum()
+        total_profit = df_profit["순이익($)"].sum()
+        avg_margin = df_profit["이익률(%)"].mean()
+        
+        c1, c2, c3 = st.columns(3)
+        c1.markdown(f'<div class="metric-card"><div class="metric-label">누적 백홀 운송매출</div><div class="metric-value" style="color:#0f172a;">${total_rev:,.0f}</div></div>', unsafe_allow_html=True)
+        c2.markdown(f'<div class="metric-card"><div class="metric-label">누적 순이익 (한계이익)</div><div class="metric-value" style="color:#16a34a;">${total_profit:,.0f}</div></div>', unsafe_allow_html=True)
+        c3.markdown(f'<div class="metric-card"><div class="metric-label">평균 이익률 (Margin)</div><div class="metric-value" style="color:#2563eb;">{avg_margin:.1f}%</div></div>', unsafe_allow_html=True)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        c_chart, c_table = st.columns([1, 1.6])
+        with c_chart:
+            if PLOTLY_AVAILABLE:
+                df_grouped = df_profit.groupby("출발지")["순이익($)"].sum().reset_index()
+                fig = px.pie(df_grouped, values="순이익($)", names="출발지", title="출발 지역별 백홀 순이익 비중", hole=0.4, color_discrete_sequence=px.colors.qualitative.Set2)
+                fig.update_layout(margin=dict(t=40, b=0, l=0, r=0))
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning("⚠️ 차트를 표시하려면 Plotly 라이브러리가 필요합니다.")
+                
+        with c_table:
+            st.markdown("**📝 건별 백홀 운송 수익성 대장**")
+            
+            # 데이터프레임 스타일링 (이익 관련 컬럼 초록색 하이라이트)
+            def highlight_profit(val):
+                return 'color: #16a34a; font-weight: bold; background-color: #f0fdf4;'
+            
+            styled_df = df_profit.style.map(highlight_profit, subset=["순이익($)", "이익률(%)"]).format({
+                "운송매출($)": "${:,.0f}", 
+                "한계비용($)": "${:,.0f}", 
+                "순이익($)": "${:,.0f}", 
+                "이익률(%)": "{:.1f}%"
+            })
+            
+            st.dataframe(styled_df, use_container_width=True, hide_index=True)
 
 def view_local_partners():
     render_official_header()
