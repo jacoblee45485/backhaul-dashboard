@@ -154,21 +154,21 @@ if st.sidebar.button("🔄 실시간 데이터 업데이트", use_container_widt
     st.cache_data.clear()
     st.rerun()
 
-# QR 코드 및 공유 링크 섹션 (동적 URL 입력 기능 적용)
+# QR 코드 및 공유 링크 섹션 (고정된 URL)
 st.sidebar.markdown("---")
 st.sidebar.subheader("🔗 시스템 공유하기")
-st.sidebar.caption("현재 접속해 계신 앱의 주소를 아래에 붙여넣으세요.")
+st.sidebar.caption("아래 QR코드를 스캔하여 모바일로 접속하세요.")
 
-# 사용자가 직접 실제 URL을 입력할 수 있도록 변경
-user_app_url = st.sidebar.text_input("앱 접속 주소 (URL)", value="https://본인의_앱주소.streamlit.app")
+# 고정된 앱 주소 설정
+fixed_app_url = "https://backhaul-dashboard-f8gdhjdyappm23kcj6hli87.streamlit.app/"
 
-if user_app_url and user_app_url != "https://본인의_앱주소.streamlit.app":
-    # URL 인코딩 처리하여 QR API에 전달
-    encoded_url = urllib.parse.quote(user_app_url)
-    qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={encoded_url}"
-    st.sidebar.image(qr_api_url, caption="스마트폰으로 스캔하세요", width=150)
-else:
-    st.sidebar.warning("올바른 앱 주소를 입력하면 QR코드가 생성됩니다.")
+# URL 인코딩 처리하여 QR API에 전달
+encoded_url = urllib.parse.quote(fixed_app_url)
+qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={encoded_url}"
+
+# QR 코드 및 변경 불가능한 코드 블록으로 URL 표시
+st.sidebar.image(qr_api_url, caption="스마트폰으로 스캔하세요", width=150)
+st.sidebar.code(fixed_app_url, language=None)
 
 # ==========================================
 # 5. 메인 화면 뷰 (라우팅)
