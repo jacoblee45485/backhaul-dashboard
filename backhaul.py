@@ -76,20 +76,23 @@ def render_official_header():
 # 2. 구글 시트 데이터 로드
 # ==========================================
 @st.cache_data(ttl=60)
-def fetch_gsheet_data(worksheet_name):
+def load_gsheet_data():
     try:
         conn = st.connection("gsheets", type=GSheetsConnection)
-        df = conn.read(worksheet=worksheet_name)
-        if not df.empty:
-            # 컬럼명을 소문자 및 공백을 언더스코어로 변환
-            df.columns = [re.sub(r'[^a-z0-9_]+', '_', str(c).strip().lower()).strip('_') for c in df.columns]
-        return df, None
+        df_orders = conn.read(worksheet="Orders")
+        df_trucks = conn.read(worksheet="Trucks")
+        
+        # 컬럼명을 소문자 및 공백을 언더스코어로 변환 (안전 처리)
+        if not df_orders.empty:
+            df_orders.columns = [re.sub(r'[^a-z0-9_]+', '_', str(c).strip().lower()).strip('_') for c in df_orders.columns]
+        if not df_trucks.empty:
+            df_trucks.columns = [re.sub(r'[^a-z0-9_]+', '_', str(c).strip().lower()).strip('_') for c in df_trucks.columns]
+            
+        return df_orders, df_trucks, None
     except Exception as e:
-        return pd.DataFrame(), str(e)
+        return pd.DataFrame(), pd.DataFrame(), str(e)
 
-df_clients, err_clients = fetch_gsheet_data("Clients")
-df_orders, err_orders = fetch_gsheet_data("Orders")
-df_trucks, err_trucks = fetch_gsheet_data("Trucks")
+df_orders, df_trucks, error_msg = load_gsheet_data()
 
 # ==========================================
 # 3. USDA 실시간 가격 연동 엔진 (필터링 강화)
@@ -131,56 +134,7 @@ def fetch_usda_market_data(report_id):
         return None, str(e)
 
 # ==========================================
-# 4. 지도 시각화 컴포넌트
-# ==========================================
-def render_network_map():
-    if not PLOTLY_AVAILABLE:
-        st.warning("Plotly 라이브러리가 설치되지 않았습니다.")
-        return
-
-    hubs = {
-        'GA (Main)': [33.7490, -84.3880],
-        'NJ (Hub)': [40.7128, -74.0060],
-        'TX (Region)': [29.7604, -95.3698],
-        'FL (Region)': [25.7617, -80.1918],
-        'NC/SC (Region)': [35.2271, -80.8431]
-    }
-    fig = go.Figure()
-
-    for name, coord in hubs.items():
-        if name != 'GA (Main)':
-            fig.add_trace(go.Scattergeo(
-                locationmode = 'USA-states',
-                lon = [hubs['GA (Main)'][1], coord[1]],
-                lat = [hubs['GA (Main)'][0], coord[0]],
-                mode = 'markers+lines',
-                line = dict(width = 2, color = '#cbd5e1'),
-                opacity = 0.6,
-                hoverinfo = 'none'
-            ))
-
-    lats = [v[0] for v in hubs.values()]
-    lons = [v[1] for v in hubs.values()]
-    names = list(hubs.keys())
-    colors = ['#E31837' if 'GA' in n or 'NJ' in n else '#0F4C81' for n in names]
-    sizes = [15 if 'GA' in n or 'NJ' in n else 10 for n in names]
-
-    fig.add_trace(go.Scattergeo(
-        locationmode = 'USA-states',
-        lon = lons, lat = lats, text = names,
-        mode = 'markers+text', textposition = "top center",
-        marker = dict(size = sizes, color = colors, line = dict(width=2, color='white')),
-        name = 'Logistics Hubs'
-    ))
-
-    fig.update_layout(
-        geo = dict(scope='usa', projection_type='albers usa', showland=True, landcolor="rgb(250, 250, 250)"),
-        margin = dict(l=0, r=0, t=0, b=0), height=380, showlegend=False
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-# ==========================================
-# 5. 사이드바 구성
+# 4. 사이드바 구성
 # ==========================================
 if 'current_menu' not in st.session_state:
     st.session_state.current_menu = "통합 주문 현황"
@@ -188,12 +142,13 @@ if 'current_menu' not in st.session_state:
 st.sidebar.markdown("""
 <h2 style="margin: 0; font-weight: 900; line-height: 1.0;">
     <span style="color: #E31837;">GIANT</span><br>
-    <span style="color: #cbd5e1; font-size: 1.1rem; letter-spacing: 1px;">FOODSYSTEM</span>
+    <span style="color: #cbd5e1; font-size: 0.95rem; letter-spacing: 1px;">FOODSYSTEM</span>
 </h2>
 """, unsafe_allow_html=True)
 st.sidebar.markdown("---")
 
-menus = ["통합 주문 현황", "품목별 시장가 비교", "트럭 배차 관리", "시스템 도움말"]
+# 최신 버전 메뉴 복구
+menus = ["통합 주문 현황", "수요자(Customer) 포털", "품목별 시장가 비교", "데이터 통합 관리"]
 for menu in menus:
     if st.sidebar.button(menu, key=f"sidebar_{menu}", use_container_width=True):
         st.session_state.current_menu = menu
@@ -208,41 +163,31 @@ st.sidebar.subheader("🔗 시스템 공유하기")
 app_share_url = "https://backhaul-dashboard-giant.streamlit.app" 
 qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={app_share_url}"
 st.sidebar.image(qr_api_url, caption="스마트폰으로 접속하기", width=150)
-st.sidebar.code(app_share_url)
 
 # ==========================================
-# 6. 메인 화면 뷰
+# 5. 메인 화면 뷰 (라우팅)
 # ==========================================
-def view_unified_orders():
+def view_unified_dashboard():
     render_official_header()
     
-    if err_orders:
-        st.error(f"구글 시트 연동 오류: {err_orders}")
-    
-    total_orders = len(df_orders)
-    total_pallets = df_orders['quantity'].sum() if not df_orders.empty and 'quantity' in df_orders.columns else 0
-    pending_trucks = len(df_trucks[df_trucks['assigned'] == 0]) if not df_trucks.empty and 'assigned' in df_trucks.columns else 0
-    
-    c1, c2, c3 = st.columns(3)
-    with c1: st.markdown(f'<div class="metric-card"><div class="metric-label">총 주문 건수</div><div class="metric-value">{total_orders}건</div></div>', unsafe_allow_html=True)
-    with c2: st.markdown(f'<div class="metric-card"><div class="metric-label">전체 수요 용량</div><div class="metric-value">{total_pallets} PLT</div></div>', unsafe_allow_html=True)
-    with c3: st.markdown(f'<div class="metric-card"><div class="metric-label">배차 대기 트럭</div><div class="metric-value">{pending_trucks}대</div></div>', unsafe_allow_html=True)
+    col1, col2, col3, col4 = st.columns(4)
+    with col1: st.markdown(f'<div class="metric-card"><div class="metric-label">총 주문</div><div class="metric-value">{len(df_orders)}건</div></div>', unsafe_allow_html=True)
+    with col2: st.markdown(f'<div class="metric-card"><div class="metric-label">운행 트럭</div><div class="metric-value">{len(df_trucks)}대</div></div>', unsafe_allow_html=True)
+    with col3: st.markdown(f'<div class="metric-card"><div class="metric-label">GA 허브 상태</div><div class="metric-value">정상</div></div>', unsafe_allow_html=True)
+    with col4: st.markdown(f'<div class="metric-card"><div class="metric-label">시스템 연동</div><div class="metric-value">Online</div></div>', unsafe_allow_html=True)
 
     st.markdown("---")
-    col_map, col_list = st.columns([1.6, 1])
-    with col_map:
-        st.subheader("🌐 Logistics Network (GA - NJ Hub)")
-        render_network_map()
-    with col_list:
-        st.subheader("📍 최근 접수된 주문")
-        if df_orders.empty:
-            st.info("데이터가 없습니다.")
-        else:
-            st.dataframe(df_orders.head(10), use_container_width=True, hide_index=True)
+    st.subheader("📊 지역별 물량 요약")
+    
+    if PLOTLY_AVAILABLE and not df_orders.empty and 'region' in df_orders.columns:
+        fig = px.pie(df_orders, names='region', title="지역별 주문 분포", hole=0.4)
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("데이터를 불러오는 중이거나 지역별 데이터(region 열)가 구글 시트에 없습니다.")
 
-def view_market_prices():
+def view_market_comparison():
     render_official_header()
-    st.subheader("📈 실시간 품목 시장가 분석 (USDA API)")
+    st.subheader("📈 USDA 실시간 품목 시세 분석")
     
     with st.expander("📌 주요 품목별 Report ID 가이드", expanded=False):
         st.markdown("""
@@ -250,8 +195,8 @@ def view_market_prices():
         - **돼지고기 (Pork):** 2498 (National Daily Pork Carcass)
         - **소고기 (Beef):** 2461 (National Weekly Boxed Beef)
         """)
-    
-    report_id = st.text_input("조회할 Report ID를 입력하세요", value="2498")
+
+    report_id = st.text_input("조회할 USDA 리포트 번호 (숫자)", value="2498")
     
     if report_id:
         with st.spinner(f"Report {report_id} 데이터를 분석 중..."):
@@ -278,37 +223,15 @@ def view_market_prices():
             else:
                 st.error(f"오류가 발생했습니다: {status}")
 
-def view_truck_dispatch():
-    render_official_header()
-    st.subheader("🚚 트럭 배차 관리")
-    if df_trucks.empty:
-        st.info("트럭 데이터가 없습니다.")
-    else:
-        st.dataframe(df_trucks, use_container_width=True)
-
-def view_help():
-    render_official_header()
-    st.subheader("❓ 시스템 설정 및 도움말")
-    st.markdown("""
-    ### 1. 구글 시트 연동 오류 시 (Secrets 설정)
-    Streamlit Cloud 설정(Settings) -> **Secrets** 메뉴에 아래 내용이 올바르게 들어가 있는지 확인하세요.
-    ```toml
-    USDA_API_KEY = "J5v4ZF527NWTsrcMJeB7jrXgfgRyPVzd"
-    
-    [connections.gsheets]
-    spreadsheet = "[https://docs.google.com/spreadsheets/d/15MPyXcHcv93E4f1qeswewTWfDensVDp2EZxLHwOLvAU/edit](https://docs.google.com/spreadsheets/d/15MPyXcHcv93E4f1qeswewTWfDensVDp2EZxLHwOLvAU/edit)"
-    ```
-    
-    ### 2. 구글 시트 탭 이름 주의
-    시트 하단의 탭 이름이 **Clients**, **Orders**, **Trucks**인지 대소문자를 꼭 확인하세요.
-    """)
-
-# 라우팅
 if st.session_state.current_menu == "통합 주문 현황":
-    view_unified_orders()
+    view_unified_dashboard()
 elif st.session_state.current_menu == "품목별 시장가 비교":
-    view_market_prices()
-elif st.session_state.current_menu == "트럭 배차 관리":
-    view_truck_dispatch()
-elif st.session_state.current_menu == "시스템 도움말":
-    view_help()
+    view_market_comparison()
+elif st.session_state.current_menu == "수요자(Customer) 포털":
+    render_official_header()
+    st.subheader("👤 수요자 포털")
+    st.dataframe(df_orders, use_container_width=True)
+elif st.session_state.current_menu == "데이터 통합 관리":
+    render_official_header()
+    st.subheader("⚙️ 데이터 관리")
+    st.data_editor(df_orders, use_container_width=True)
