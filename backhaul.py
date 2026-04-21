@@ -59,17 +59,18 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 def render_official_header():
+    # 들여쓰기를 제거하여 Markdown 코드 블록으로 인식되는 것을 방지
     st.markdown("""
-    <div style="background-color: #f8fafc; padding: 30px 20px; border-radius: 15px; border: 2px solid #e2e8f0; margin-bottom: 30px; text-align: center;">
-        <h1 style="margin: 0; font-size: 3.5rem; font-weight: 900; letter-spacing: -2px; line-height: 1.1;">
-            <span style="color: #E31837;">GIANT</span> <span style="color: #000000; font-size: 1.5rem; vertical-align: middle;">FOODSYSTEM</span>
-        </h1>
-        <p style="font-size: 1.2rem; font-weight: 700; color: #475569; margin: 10px 0 5px 0;">#1 K-food Distributor in USA</p>
-        <p style="font-size: 0.95rem; font-weight: 500; color: #64748b; margin: 0; line-height: 1.4;">
-            A nationwide food distributor serving for Korean Restaurants, Deli & Salad Bars since 1986
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+<div style="background-color: #f8fafc; padding: 30px 20px; border-radius: 15px; border: 2px solid #e2e8f0; margin-bottom: 30px; text-align: center;">
+    <h1 style="margin: 0; font-size: 3.5rem; font-weight: 900; letter-spacing: -2px; line-height: 1.1;">
+        <span style="color: #E31837;">GIANT</span> <span style="color: #000000; font-size: 1.5rem; vertical-align: middle;">FOODSYSTEM</span>
+    </h1>
+    <p style="font-size: 1.2rem; font-weight: 700; color: #475569; margin: 10px 0 5px 0;">#1 K-food Distributor in USA</p>
+    <p style="font-size: 0.95rem; font-weight: 500; color: #64748b; margin: 0; line-height: 1.4;">
+        A nationwide food distributor serving for Korean Restaurants, Deli & Salad Bars since 1986
+    </p>
+</div>
+""", unsafe_allow_html=True)
 
 # ==========================================
 # 2. 구글 시트 및 로컬 공급처 데이터 로드
@@ -311,12 +312,13 @@ def view_market_comparison():
                         st.warning("⚠️ Plotly 라이브러리가 없어 차트를 그릴 수 없습니다.")
                     st.dataframe(df_market[[price_col]].head(10))
                 elif status == "empty_shell":
+                    # 들여쓰기 제거
                     st.markdown(f"""
-                    <div class="warning-box">
-                        <b>[데이터 경고]</b> 의미 없는 껍데기 데이터(표지)를 자동으로 걸러냈습니다!<br>
-                        조회하신 숫자 번호(<b>{report_id}</b>)는 실제 가격 정보가 없습니다. 다른 ID를 입력해 보세요!
-                    </div>
-                    """, unsafe_allow_html=True)
+<div class="warning-box">
+    <b>[데이터 경고]</b> 의미 없는 껍데기 데이터(표지)를 자동으로 걸러냈습니다!<br>
+    조회하신 숫자 번호(<b>{report_id}</b>)는 실제 가격 정보가 없습니다. 다른 ID를 입력해 보세요!
+</div>
+""", unsafe_allow_html=True)
 
 def view_3pl_freight():
     render_official_header()
@@ -354,70 +356,68 @@ def view_3pl_freight():
         ]
         
         for truck in backhaul_trucks:
-            # 브라우저 호환성을 100% 보장하기 위해 Grid 대신 명시적인 Flexbox 행(Row)으로 2개씩 채워지게 분리
             row1_html = ""
             row2_html = ""
             
-            for i in range(11): # 가로 11칸 반복
-                idx1 = i * 2      # 윗줄 인덱스: 0, 2, 4 ... 20
-                idx2 = i * 2 + 1  # 아랫줄 인덱스: 1, 3, 5 ... 21
+            for i in range(11): 
+                idx1 = i * 2      
+                idx2 = i * 2 + 1  
                 
-                # 윗줄(Row 1) 팔렛트 채우기
                 if idx1 < truck["used"]:
                     row1_html += '<div style="width: 24px; height: 24px; background-color: #94a3b8; border-radius: 3px; flex-shrink: 0;"></div>'
                 else:
                     row1_html += '<div style="width: 24px; height: 24px; background-color: #dcfce7; border-radius: 3px; border: 2px solid #22c55e; box-sizing: border-box; flex-shrink: 0;"></div>'
                     
-                # 아랫줄(Row 2) 팔렛트 채우기
                 if idx2 < truck["used"]:
                     row2_html += '<div style="width: 24px; height: 24px; background-color: #94a3b8; border-radius: 3px; flex-shrink: 0;"></div>'
                 else:
                     row2_html += '<div style="width: 24px; height: 24px; background-color: #dcfce7; border-radius: 3px; border: 2px solid #22c55e; box-sizing: border-box; flex-shrink: 0;"></div>'
 
-            # 트럭 카드 렌더링
+            # 들여쓰기를 제거하여 Markdown 코드 블록으로 인식되는 것을 방지
             st.markdown(f"""
-            <div style="border: 1px solid #e2e8f0; border-radius: 10px; padding: 15px; margin-bottom: 15px; background-color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <strong style="font-size: 1.2em; color: #0f172a;">🚛 {truck['id']}</strong>
-                    <span style="background-color: #f1f5f9; color: #334155; padding: 3px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; border: 1px solid #cbd5e1;">{truck['status']}</span>
-                </div>
-                <div style="color: #475569; font-size: 0.9em; margin-bottom: 12px;">
-                    📍 <b>{truck['origin']}</b> ➡️ <b>{truck['destination']}</b> &nbsp;|&nbsp; 🕒 {truck['schedule']}
-                </div>
-                <div style="font-size: 0.85em; color: #334155; margin-bottom: 6px; display: flex; justify-content: space-between;">
-                    <span><b>적재 공간 현황</b> (총 22 PLT)</span>
-                    <span>사용: {truck['used']} &nbsp;|&nbsp; <b style="color: #16a34a; font-size: 1.1em;">잔여: {truck['available']} PLT</b></span>
-                </div>
-                
-                <!-- 트럭 탑차 형태 시각화 (호환성 100% Flexbox 사용) -->
-                <div style="display: flex; align-items: center; background-color: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; overflow-x: auto;">
-                    <div style="background-color: #cbd5e1; color: #334155; padding: 8px 4px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; margin-right: 12px; text-align: center; min-width: 40px; flex-shrink: 0;">안쪽<br>(Front)</div>
-                    
-                    <div style="display: flex; flex-direction: column; gap: 5px; flex-shrink: 0;">
-                        <div style="display: flex; flex-direction: row; gap: 5px;">
-                            {row1_html}
-                        </div>
-                        <div style="display: flex; flex-direction: row; gap: 5px;">
-                            {row2_html}
-                        </div>
-                    </div>
-                    
-                    <div style="margin-left: auto; padding-left: 12px; color: #64748b; font-size: 0.65rem; font-weight: bold; text-align: center; border-left: 2px dashed #cbd5e1; min-width: 40px; flex-shrink: 0;">뒷문<br>(Doors)</div>
-                </div>
-                
-                <div style="display: flex; gap: 15px; margin-top: 10px; font-size: 0.8rem; color: #64748b;">
-                    <div style="display: flex; align-items: center;"><div style="width: 12px; height: 12px; background-color: #94a3b8; border-radius: 2px; margin-right: 6px; flex-shrink: 0;"></div>타 화물 적재됨</div>
-                    <div style="display: flex; align-items: center;"><div style="width: 12px; height: 12px; background-color: #dcfce7; border: 1.5px solid #22c55e; border-radius: 2px; margin-right: 6px; flex-shrink: 0;"></div><b>예약 가능 (잔여 여유 공간)</b></div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+<div style="border: 1px solid #e2e8f0; border-radius: 10px; padding: 15px; margin-bottom: 15px; background-color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <strong style="font-size: 1.2em; color: #0f172a;">🚛 {truck['id']}</strong>
+        <span style="background-color: #f1f5f9; color: #334155; padding: 3px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; border: 1px solid #cbd5e1;">{truck['status']}</span>
+    </div>
+    <div style="color: #475569; font-size: 0.9em; margin-bottom: 12px;">
+        📍 <b>{truck['origin']}</b> ➡️ <b>{truck['destination']}</b> &nbsp;|&nbsp; 🕒 {truck['schedule']}
+    </div>
+    <div style="font-size: 0.85em; color: #334155; margin-bottom: 6px; display: flex; justify-content: space-between;">
+        <span><b>적재 공간 현황</b> (총 22 PLT)</span>
+        <span>사용: {truck['used']} &nbsp;|&nbsp; <b style="color: #16a34a; font-size: 1.1em;">잔여: {truck['available']} PLT</b></span>
+    </div>
+    
+    <!-- 트럭 탑차 형태 시각화 -->
+    <div style="display: flex; align-items: center; background-color: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; overflow-x: auto;">
+        <div style="background-color: #cbd5e1; color: #334155; padding: 8px 4px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; margin-right: 12px; text-align: center; min-width: 40px; flex-shrink: 0;">안쪽<br>(Front)</div>
         
-        st.markdown("""
-        <div class="warning-box" style="background-color: #f0fdf4; border-color: #bbf7d0; color: #166534; margin-top: 20px;">
-            <b>💡 3PL 백홀 비즈니스 모델:</b><br>
-            아웃바운드(프론트홀) 물량은 자사 상품으로 이미 고정되어 있습니다. 본 서비스는 <b>배송 완료 후 조지아 본사로 돌아오는 빈 트럭(Backhaul)</b>을 활용하여, 타 업체의 화물(품목 무관)을 운송함으로써 <b>운송 원가 절감 및 추가 수익</b>을 창출하는 핵심 기능입니다.
+        <div style="display: flex; flex-direction: column; gap: 5px; flex-shrink: 0;">
+            <div style="display: flex; flex-direction: row; gap: 5px;">
+                {row1_html}
+            </div>
+            <div style="display: flex; flex-direction: row; gap: 5px;">
+                {row2_html}
+            </div>
         </div>
-        """, unsafe_allow_html=True)
+        
+        <div style="margin-left: auto; padding-left: 12px; color: #64748b; font-size: 0.65rem; font-weight: bold; text-align: center; border-left: 2px dashed #cbd5e1; min-width: 40px; flex-shrink: 0;">뒷문<br>(Doors)</div>
+    </div>
+    
+    <div style="display: flex; gap: 15px; margin-top: 10px; font-size: 0.8rem; color: #64748b;">
+        <div style="display: flex; align-items: center;"><div style="width: 12px; height: 12px; background-color: #94a3b8; border-radius: 2px; margin-right: 6px; flex-shrink: 0;"></div>타 화물 적재됨</div>
+        <div style="display: flex; align-items: center;"><div style="width: 12px; height: 12px; background-color: #dcfce7; border: 1.5px solid #22c55e; border-radius: 2px; margin-right: 6px; flex-shrink: 0;"></div><b>예약 가능 (잔여 여유 공간)</b></div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+        
+        # 들여쓰기 제거
+        st.markdown("""
+<div class="warning-box" style="background-color: #f0fdf4; border-color: #bbf7d0; color: #166534; margin-top: 20px;">
+    <b>💡 3PL 백홀 비즈니스 모델:</b><br>
+    아웃바운드(프론트홀) 물량은 자사 상품으로 이미 고정되어 있습니다. 본 서비스는 <b>배송 완료 후 조지아 본사로 돌아오는 빈 트럭(Backhaul)</b>을 활용하여, 타 업체의 화물(품목 무관)을 운송함으로써 <b>운송 원가 절감 및 추가 수익</b>을 창출하는 핵심 기능입니다.
+</div>
+""", unsafe_allow_html=True)
 
 def view_local_partners():
     render_official_header()
