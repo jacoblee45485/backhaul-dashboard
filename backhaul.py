@@ -184,29 +184,53 @@ def view_market_comparison():
 
 def view_local_partners():
     render_official_header()
-    st.subheader("🤝 텍사스 로컬 육류 공급처 (Backhaul Sourcing)")
-    st.markdown("텍사스로 배송 후 GA로 돌아오는 트럭의 공차율을 줄이기 위한 지역 육류(Meat) 파트너 발굴 지도입니다.")
+    st.subheader("🤝 로컬 파트너 발굴 (Backhaul Sourcing)")
+    st.markdown("배송 후 GA 허브로 돌아오는 트럭의 공차율을 줄이기 위한 지역 파트너 및 산지 발굴 지도입니다.")
     
-    # 텍사스 로컬 육류 공급처 데모 데이터
-    tx_suppliers = pd.DataFrame([
-        {"업체명": "Texas Beef Packers", "도시": "Dallas", "취급품목": "Beef", "상태": "계약 검토중", "lat": 32.7767, "lon": -96.7970},
-        {"업체명": "Houston Wholesale Meat", "도시": "Houston", "취급품목": "Beef/Pork", "상태": "컨택 요망", "lat": 29.7604, "lon": -95.3698},
-        {"업체명": "Austin Poultry Farms", "도시": "Austin", "취급품목": "Poultry", "상태": "계약 검토중", "lat": 30.2672, "lon": -97.7431},
-        {"업체명": "San Antonio Meats", "도시": "San Antonio", "취급품목": "Pork", "상태": "컨택 요망", "lat": 29.4241, "lon": -98.4936}
-    ])
+    tab1, tab2 = st.tabs(["🥩 텍사스 (TX 육류)", "🍊 플로리다 (FL 농·수산물)"])
     
-    c1, c2 = st.columns([1, 1.5])
-    with c1:
-        st.dataframe(tx_suppliers[["업체명", "도시", "취급품목", "상태"]], use_container_width=True, hide_index=True)
-        st.info("💡 **팁:** 향후 구글 시트에 'Suppliers' 탭을 추가하여 USDA FSIS 디렉토리에서 찾은 실제 도축장 리스트를 넣으면 시스템에 자동 반영할 수 있습니다.")
-    with c2:
-        if PLOTLY_AVAILABLE:
-            fig = px.scatter_geo(tx_suppliers, lat='lat', lon='lon', text='업체명', color='취급품목',
-                                 scope='usa', title="Texas Local Meat Suppliers Map",
-                                 color_discrete_sequence=['#E31837', '#0F4C81', '#166534'])
-            # 텍사스 주변으로 지도 포커스
-            fig.update_geos(fitbounds="locations")
-            st.plotly_chart(fig, use_container_width=True)
+    with tab1:
+        # 텍사스 로컬 육류 공급처 데모 데이터
+        tx_suppliers = pd.DataFrame([
+            {"업체명": "Texas Beef Packers", "도시": "Dallas", "취급품목": "Beef", "상태": "계약 검토중", "lat": 32.7767, "lon": -96.7970},
+            {"업체명": "Houston Wholesale Meat", "도시": "Houston", "취급품목": "Beef/Pork", "상태": "컨택 요망", "lat": 29.7604, "lon": -95.3698},
+            {"업체명": "Austin Poultry Farms", "도시": "Austin", "취급품목": "Poultry", "상태": "계약 검토중", "lat": 30.2672, "lon": -97.7431},
+            {"업체명": "San Antonio Meats", "도시": "San Antonio", "취급품목": "Pork", "상태": "컨택 요망", "lat": 29.4241, "lon": -98.4936}
+        ])
+        
+        c1, c2 = st.columns([1, 1.5])
+        with c1:
+            st.dataframe(tx_suppliers[["업체명", "도시", "취급품목", "상태"]], use_container_width=True, hide_index=True)
+            st.info("💡 **팁:** 구글 시트 'Suppliers' 탭을 통해 USDA 육류가공업체 데이터를 연동하면 더욱 촘촘한 배차망을 구축할 수 있습니다.")
+        with c2:
+            if PLOTLY_AVAILABLE:
+                fig1 = px.scatter_geo(tx_suppliers, lat='lat', lon='lon', text='업체명', color='취급품목',
+                                     scope='usa', title="Texas Local Meat Suppliers Map",
+                                     color_discrete_sequence=['#E31837', '#0F4C81', '#166534'])
+                fig1.update_geos(fitbounds="locations")
+                st.plotly_chart(fig1, use_container_width=True)
+
+    with tab2:
+        # 플로리다 농/수산물 공급처 데모 데이터
+        fl_suppliers = pd.DataFrame([
+            {"업체명": "Jacksonville Seafood Co.", "도시": "Jacksonville", "취급품목": "Seafood", "상태": "계약 완료", "lat": 30.3322, "lon": -81.6557},
+            {"업체명": "Tampa Citrus Farms", "도시": "Tampa", "취급품목": "Citrus/Fruits", "상태": "계약 검토중", "lat": 27.9506, "lon": -82.4572},
+            {"업체명": "Miami Ocean Catch", "도시": "Miami", "취급품목": "Seafood", "상태": "컨택 요망", "lat": 25.7617, "lon": -80.1918},
+            {"업체명": "Orlando Fresh Greens", "도시": "Orlando", "취급품목": "Vegetables", "상태": "컨택 요망", "lat": 28.5383, "lon": -81.3792}
+        ])
+        
+        c3, c4 = st.columns([1, 1.5])
+        with c3:
+            st.dataframe(fl_suppliers[["업체명", "도시", "취급품목", "상태"]], use_container_width=True, hide_index=True)
+            st.info("💡 **팁:** 플로리다는 오렌지/자몽 등 감귤류 농장과 해안가 수산물(새우, 생선류) 소싱이 백홀 최적화에 유리합니다.")
+        with c4:
+            if PLOTLY_AVAILABLE:
+                fig2 = px.scatter_geo(fl_suppliers, lat='lat', lon='lon', text='업체명', color='취급품목',
+                                     scope='usa', title="Florida Agri/Seafood Suppliers Map",
+                                     color_discrete_sequence=['#0EA5E9', '#F59E0B', '#10B981'])
+                fig2.update_geos(fitbounds="locations")
+                st.plotly_chart(fig2, use_container_width=True)
+
 
 if st.session_state.current_menu == "통합 주문 현황":
     view_unified_dashboard()
